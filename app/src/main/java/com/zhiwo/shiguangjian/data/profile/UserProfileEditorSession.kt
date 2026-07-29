@@ -25,6 +25,9 @@ class UserProfileEditorSession(
     private val _blocklist = MutableStateFlow(ProfileBlocklist())
     val blocklist: StateFlow<ProfileBlocklist> = _blocklist.asStateFlow()
 
+    /** 进入页面时的 blocklist 快照，用于判断本次保存是否新增了阻止项 */
+    private var baselineBlocklist: ProfileBlocklist = ProfileBlocklist()
+
     private val _autoUpdateEnabled = MutableStateFlow(true)
     val autoUpdateEnabled: StateFlow<Boolean> = _autoUpdateEnabled.asStateFlow()
 
@@ -60,7 +63,9 @@ class UserProfileEditorSession(
                 }
             )
             _draft.value = visible
-            _blocklist.value = runCatching { loadBlocklist() }.getOrDefault(ProfileBlocklist())
+            val loadedBl = runCatching { loadBlocklist() }.getOrDefault(ProfileBlocklist())
+            _blocklist.value = loadedBl
+            baselineBlocklist = loadedBl
             _autoUpdateEnabled.value = runCatching { loadAutoUpdate() }.getOrDefault(true)
             _dirty.value = false
         } catch (_: Throwable) {
@@ -281,7 +286,14 @@ class UserProfileEditorSession(
                 }
             )
             _dirty.value = false
-            _events.emit(Event.Message("画像已保存"))
+            val newlyBlocked = countNewlyBlocked(baselineBlocklist, blockSnap)
+            val msg = if (newlyBlocked > 0) {
+                "画像已保存，删除的条目不会再被 AI 学习"
+            } else {
+                "画像已保存"
+            }
+            baselineBlocklist = blockSnap
+            _events.emit(Event.Message(msg))
             if (exitAfter) _events.emit(Event.SavedAndExit)
             true
         } catch (e: Throwable) {
@@ -316,8 +328,9 @@ class UserProfileEditorSession(
             saveProfile(empty)
             _draft.value = empty
             _blocklist.value = blocked
+            baselineBlocklist = blocked
             _dirty.value = false
-            _events.emit(Event.Message("画像已清空"))
+            _events.emit(Event.Message("画像已清空，相关条目不会再被 AI 学习"))
             _events.emit(Event.ClearedAndExit)
             true
         } catch (e: Throwable) {
@@ -334,6 +347,19 @@ class UserProfileEditorSession(
 
     fun markCleanForDiscard() {
         _dirty.value = false
+    }
+
+
+    private fun countNewlyBlocked(before: ProfileBlocklist, after: ProfileBlocklist): Int {
+        fun keys(list: List<String>) = list.map { ProfileBlocklistCodec.normalizeKey(it) }.filter { it.isNotEmpty() }.toSet()
+        var n = 0
+        n += (keys(after.stableFacts) - keys(before.stableFacts)).size
+        n += (keys(after.preferences) - keys(before.preferences)).size
+        n += (keys(after.supportStyle) - keys(before.supportStyle)).size
+        n += (keys(after.appearanceFacts) - keys(before.appearanceFacts)).size
+        n += (keys(after.recentStates) - keys(before.recentStates)).size
+        n += (keys(after.personalityTraits) - keys(before.personalityTraits)).size
+        return n
     }
 
     enum class Field {

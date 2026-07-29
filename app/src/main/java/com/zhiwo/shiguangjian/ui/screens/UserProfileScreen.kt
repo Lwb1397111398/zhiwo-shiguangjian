@@ -74,9 +74,6 @@ fun UserProfileScreen(
         if (dirty) showDiscardDialog = true else onBack()
     }
 
-    fun notifyDeleted() {
-        Toast.makeText(context, "删除后 AI 不会再次学习此项（保存后生效）", Toast.LENGTH_SHORT).show()
-    }
 
     BackHandler(enabled = true) { requestBack() }
 
@@ -278,7 +275,7 @@ fun UserProfileScreen(
                         onEdit = {
                             textDialog = TextDialogState("编辑稳定信息", ProfileTextField.STABLE_FACTS, index, text)
                         },
-                        onDelete = { viewModel.removeText(ProfileTextField.STABLE_FACTS, index); notifyDeleted() }
+                        onDelete = { viewModel.removeText(ProfileTextField.STABLE_FACTS, index) }
                     )
                 }
             }
@@ -307,7 +304,7 @@ fun UserProfileScreen(
                         onEdit = {
                             textDialog = TextDialogState("编辑兴趣与偏好", ProfileTextField.PREFERENCES, index, text)
                         },
-                        onDelete = { viewModel.removeText(ProfileTextField.PREFERENCES, index); notifyDeleted() }
+                        onDelete = { viewModel.removeText(ProfileTextField.PREFERENCES, index) }
                     )
                 }
             }
@@ -336,7 +333,7 @@ fun UserProfileScreen(
                         onEdit = {
                             textDialog = TextDialogState("编辑沟通方式", ProfileTextField.SUPPORT_STYLE, index, text)
                         },
-                        onDelete = { viewModel.removeText(ProfileTextField.SUPPORT_STYLE, index); notifyDeleted() }
+                        onDelete = { viewModel.removeText(ProfileTextField.SUPPORT_STYLE, index) }
                     )
                 }
             }
@@ -365,7 +362,7 @@ fun UserProfileScreen(
                         onEdit = {
                             personalityDialog = PersonalityDialogState(index, trait.trait, trait.confidence.toFloat())
                         },
-                        onDelete = { viewModel.removePersonality(index); notifyDeleted() }
+                        onDelete = { viewModel.removePersonality(index) }
                     )
                 }
             }
@@ -394,7 +391,7 @@ fun UserProfileScreen(
                         onEdit = {
                             textDialog = TextDialogState("编辑外貌信息", ProfileTextField.APPEARANCE, index, text)
                         },
-                        onDelete = { viewModel.removeText(ProfileTextField.APPEARANCE, index); notifyDeleted() }
+                        onDelete = { viewModel.removeText(ProfileTextField.APPEARANCE, index) }
                     )
                 }
             }
@@ -423,7 +420,7 @@ fun UserProfileScreen(
                         onEdit = {
                             recentDialog = RecentDialogState(index, state.content, 30)
                         },
-                        onDelete = { viewModel.removeRecent(index); notifyDeleted() }
+                        onDelete = { viewModel.removeRecent(index) }
                     )
                 }
             }

@@ -8,12 +8,19 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cake
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,14 +41,16 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel = viewModel(),
-    onNavigateToOrganize: () -> Unit = {}
+    onNavigateToOrganize: () -> Unit = {},
+    onNavigateToSpecialDates: () -> Unit = {},
+    onNavigateToUserProfile: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val apiBaseUrl by viewModel.apiBaseUrl.collectAsState()
     val apiKey by viewModel.apiKey.collectAsState()
     val modelName by viewModel.modelName.collectAsState()
-    val darkMode by viewModel.darkMode.collectAsState()
+    val darkModePref by viewModel.darkModePref.collectAsState()
     val autoCalendarSync by viewModel.autoCalendarSync.collectAsState()
     val smartReminder by viewModel.smartReminder.collectAsState()
     val storageInfo by viewModel.storageInfo.collectAsState()
@@ -54,6 +63,7 @@ fun SettingsScreen(
     var newCatName by remember { mutableStateOf("") }
     var newCatIcon by remember { mutableStateOf("📌") }
     var newCatColor by remember { mutableStateOf("#6B8E9F") }
+    val categoryColorOptions = listOf("#6B8E9F", "#F7A8B8", "#98D8C8", "#FFD166", "#A78BFA", "#84A59D", "#999999")
     val calendarPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { results ->
@@ -166,11 +176,9 @@ fun SettingsScreen(
 
                     OutlinedButton(
                         onClick = {
-                            android.util.Log.e("SettingsUI", "=== 点击测试连接按钮 ===")
                             Toast.makeText(context, "开始测试...", Toast.LENGTH_SHORT).show()
                             testing = true
-                            viewModel.testConnection { success, message ->
-                                android.util.Log.e("SettingsUI", "=== 测试回调: success=$success, msg=$message ===")
+                            viewModel.testConnection { _, message ->
                                 testing = false
                                 testResult = message
                             }
@@ -208,12 +216,23 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("夜间模式", style = MaterialTheme.typography.bodyLarge)
-                Switch(
-                    checked = darkMode,
-                    onCheckedChange = { viewModel.toggleDarkMode(it) },
-                    colors = SwitchDefaults.colors(checkedTrackColor = MaterialTheme.colorScheme.primary)
-                )
+                Column {
+                    Text("深色模式", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        when (darkModePref) {
+                            "on" -> "已开启"
+                            "off" -> "已关闭"
+                            else -> "跟随系统"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    FilterChip(selected = darkModePref == "off", onClick = { viewModel.setDarkModePref("off") }, label = { Text("亮色") })
+                    FilterChip(selected = darkModePref == "auto", onClick = { viewModel.setDarkModePref("auto") }, label = { Text("跟随") })
+                    FilterChip(selected = darkModePref == "on", onClick = { viewModel.setDarkModePref("on") }, label = { Text("暗色") })
+                }
             }
         }
 
@@ -360,6 +379,25 @@ fun SettingsScreen(
                     }
                 }
 
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    categoryColorOptions.forEach { color ->
+                        val selected = newCatColor == color
+                        Box(
+                            modifier = Modifier
+                                .size(if (selected) 30.dp else 26.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(parseColor(color))
+                                .clickable { newCatColor = color }
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(12.dp))
                 OutlinedButton(
                     onClick = {
@@ -369,6 +407,60 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 ) { Text("保存分类设置") }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // ===== 用户画像 =====
+        SectionTitle("用户画像")
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    "查看和纠正 AI 对你的了解",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 18.sp
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = onNavigateToUserProfile,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("管理用户画像")
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // ===== 重要日子 =====
+        SectionTitle("重要日子")
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("添加生日、纪念日等重要日子（支持农历），每天第一次打开应用的揭历卡片会提醒你。",
+                    fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 18.sp)
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = onNavigateToSpecialDates,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) { Icon(Icons.Default.Cake, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("管理重要日子") }
             }
         }
 
@@ -391,7 +483,9 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) { Text("🗂️ 开始整理") }
+                ) { Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("开始整理") }
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = {
@@ -411,7 +505,9 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     enabled = !exporting
-                ) { Text(if (exporting) "正在准备导出..." else "📤 导出所有数据") }
+                ) { if (!exporting) Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(18.dp))
+                    if (!exporting) Spacer(modifier = Modifier.width(4.dp))
+                    Text(if (exporting) "正在准备导出..." else "导出所有数据") }
             }
         }
 
@@ -427,13 +523,17 @@ fun SettingsScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 storageInfo?.let { info ->
-                    StorageRow("📝 记录", "${info.records} 条")
-                    StorageRow("✅ 任务", "${info.tasks} 个")
-                    StorageRow("🏷️ 标签", "${info.tags} 个")
+                    StorageRow("记录", "${info.records} 条")
+                    StorageRow("任务", "${info.tasks} 个")
+                    StorageRow("标签", "${info.tags} 个")
                     StorageRow("💬 评价", "${info.reviews} 条")
                     StorageRow("🧠 记忆", "${info.memories} 条")
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("✅ 本地存储正常", fontSize = 13.sp, color = Success)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Success, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("本地存储正常", style = MaterialTheme.typography.bodySmall, color = Success)
+                    }
                 }
             }
         }

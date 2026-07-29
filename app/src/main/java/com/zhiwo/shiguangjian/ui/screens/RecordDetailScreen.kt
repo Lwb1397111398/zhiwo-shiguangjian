@@ -1,6 +1,7 @@
 package com.zhiwo.shiguangjian.ui.screens
 
 import android.widget.Toast
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,6 +12,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -52,6 +55,11 @@ fun RecordDetailScreen(
     var showAddTag by remember(recordId) { mutableStateOf(false) }
     var newTagText by remember(recordId) { mutableStateOf("") }
 
+    // 编辑状态
+    var isEditing by remember(recordId) { mutableStateOf(false) }
+    var editTitle by remember(recordId) { mutableStateOf("") }
+    var editContent by remember(recordId) { mutableStateOf("") }
+
     if (record == null) {
         // 记录不存在或正在加载
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
@@ -75,6 +83,23 @@ fun RecordDetailScreen(
                         }
                     },
                     actions = {
+                        if (isEditing) {
+                            IconButton(onClick = {
+                                viewModel.updateRecordContent(recordId, editTitle, editContent) {
+                                    isEditing = false
+                                }
+                            }) {
+                                Icon(Icons.Default.Check, contentDescription = "保存", tint = MaterialTheme.colorScheme.primary)
+                            }
+                        } else {
+                            IconButton(onClick = {
+                                editTitle = rec.title
+                                editContent = rec.content
+                                isEditing = true
+                            }) {
+                                Icon(Icons.Default.Edit, contentDescription = "编辑")
+                            }
+                        }
                         IconButton(onClick = { showDeleteDialog = true }) {
                             Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
                         }
@@ -93,7 +118,7 @@ fun RecordDetailScreen(
                 // ===== 标题和分类 =====
                 item {
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().animateContentSize(),
                         shape = RoundedCornerShape(22.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -112,13 +137,25 @@ fun RecordDetailScreen(
                                 )
                             }
                             Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = rec.title,
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                lineHeight = 28.sp
-                            )
+                            if (isEditing) {
+                                OutlinedTextField(
+                                    value = editTitle,
+                                    onValueChange = { editTitle = it },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    placeholder = { Text("标题") },
+                                    shape = RoundedCornerShape(12.dp),
+                                    singleLine = true,
+                                    textStyle = LocalTextStyle.current.copy(fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                                )
+                            } else {
+                                Text(
+                                    text = rec.title,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    lineHeight = 28.sp
+                                )
+                            }
                         }
                     }
                 }
@@ -127,12 +164,23 @@ fun RecordDetailScreen(
                 item {
                     Spacer(modifier = Modifier.height(12.dp))
                     SectionCard(title = "原始内容") {
-                        Text(
-                            text = rec.content,
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            lineHeight = 24.sp
-                        )
+                        if (isEditing) {
+                            OutlinedTextField(
+                                value = editContent,
+                                onValueChange = { editContent = it },
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
+                                placeholder = { Text("内容") },
+                                shape = RoundedCornerShape(12.dp),
+                                textStyle = LocalTextStyle.current.copy(fontSize = 14.sp, lineHeight = 24.sp)
+                            )
+                        } else {
+                            Text(
+                                text = rec.content,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                lineHeight = 24.sp
+                            )
+                        }
                     }
                 }
 
@@ -315,7 +363,7 @@ fun SectionCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().animateContentSize(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -341,4 +389,3 @@ fun formatTime(isoDate: String): String {
         isoDate.take(10)
     }
 }
-

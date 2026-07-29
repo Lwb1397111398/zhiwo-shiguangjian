@@ -12,6 +12,6 @@ object DateFormats {
     val DATE_TIME_FULL: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
     fun nowDate(): String = LocalDateTime.now().format(DATE)
-    fun nowDateTimeIso(): String = LocalDateTime.now().toInstant(ZoneOffset.UTC).atOffset(ZoneOffset.UTC).format(DATE_TIME_ISO)
+    fun nowDateTimeIso(): String = LocalDateTime.now().format(DATE_TIME_ISO)
     fun nowDateTimeDisplay(): String = LocalDateTime.now().format(DATE_TIME_DISPLAY)
 }

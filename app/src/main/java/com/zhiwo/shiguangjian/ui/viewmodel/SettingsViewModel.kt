@@ -40,7 +40,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val app = application as ZhiwoApplication
     private val settingsRepo = SettingsRepository(app.database.settingDao())
     private val recordRepo = RecordRepository(
-        app.database.recordDao(), app.database.taskDao(),
+        app.database, app.database.recordDao(), app.database.taskDao(),
         app.database.tagDao(), app.database.keyInfoDao()
     )
     private val taskRepo = TaskRepository(app.database.taskDao())
@@ -59,8 +59,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _modelName = MutableStateFlow("")
     val modelName: StateFlow<String> = _modelName
 
-    private val _darkMode = MutableStateFlow(false)
-    val darkMode: StateFlow<Boolean> = _darkMode
+    private val _darkModePref = MutableStateFlow("auto")
+    val darkModePref: StateFlow<String> = _darkModePref
 
     private val _autoCalendarSync = MutableStateFlow(true)
     val autoCalendarSync: StateFlow<Boolean> = _autoCalendarSync
@@ -86,7 +86,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 _apiBaseUrl.value = settingsRepo.getSetting("apiBaseUrl") ?: ""
                 _apiKey.value = secureSettingsRepo.getApiKey()
                 _modelName.value = settingsRepo.getSetting("modelName") ?: ""
-                _darkMode.value = settingsRepo.getSetting("darkMode") == "true"
+                val saved = settingsRepo.getSetting("darkMode")
+                _darkModePref.value = when (saved) {
+                    "true" -> "on"   // 老版本迁移
+                    "false" -> "off" // 老版本迁移
+                    null -> "auto"
+                    else -> saved    // 已是新格式 "auto"/"on"/"off"
+                }
                 _autoCalendarSync.value = settingsRepo.getSetting("autoCalendarSync") != "false"
                 _smartReminder.value = settingsRepo.getSetting("smartReminder") != "false"
                 aiRepo.configureFromSettings(settingsRepo, secureSettingsRepo)
@@ -164,41 +170,54 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun toggleDarkMode(enabled: Boolean) {
-        _darkMode.value = enabled
+    fun setDarkModePref(pref: String) {
+        val oldValue = _darkModePref.value
+        _darkModePref.value = pref
         viewModelScope.launch {
-            settingsRepo.setSetting("darkMode", enabled.toString())
+            try {
+                settingsRepo.setSetting("darkMode", pref)
+            } catch (e: Throwable) {
+                android.util.Log.e("SettingsVM", "setDarkModePref failed", e)
+                _darkModePref.value = oldValue
+            }
         }
     }
 
     fun toggleAutoCalendarSync(enabled: Boolean) {
+        val oldValue = _autoCalendarSync.value
         _autoCalendarSync.value = enabled
         viewModelScope.launch {
-            settingsRepo.setSetting("autoCalendarSync", enabled.toString())
+            try {
+                settingsRepo.setSetting("autoCalendarSync", enabled.toString())
+            } catch (e: Throwable) {
+                android.util.Log.e("SettingsVM", "toggleAutoCalendarSync failed", e)
+                _autoCalendarSync.value = oldValue
+            }
         }
     }
 
     fun toggleSmartReminder(enabled: Boolean) {
+        val oldValue = _smartReminder.value
         _smartReminder.value = enabled
         viewModelScope.launch {
-            settingsRepo.setSetting("smartReminder", enabled.toString())
+            try {
+                settingsRepo.setSetting("smartReminder", enabled.toString())
+            } catch (e: Throwable) {
+                android.util.Log.e("SettingsVM", "toggleSmartReminder failed", e)
+                _smartReminder.value = oldValue
+            }
         }
     }
 
     fun testConnection(callback: (Boolean, String) -> Unit) {
-        android.util.Log.i("SettingsVM", "testConnection 开始")
         viewModelScope.launch {
             try {
-                android.util.Log.i("SettingsVM", "准备 configure: url=${_apiBaseUrl.value}, key长度=${_apiKey.value.length}, model=${_modelName.value}")
                 aiRepo.configure(_apiBaseUrl.value, _apiKey.value, _modelName.value)
-                android.util.Log.i("SettingsVM", "configure 完成, isConfigured=${aiRepo.isConfigured}")
                 if (!aiRepo.isConfigured) {
                     callback(false, "❌ 请填写完整的 API 配置")
                     return@launch
                 }
-                android.util.Log.i("SettingsVM", "开始 testConnection")
                 val success = aiRepo.testConnection()
-                android.util.Log.i("SettingsVM", "testConnection 结果: $success")
                 callback(success, if (success) "✅ 连接成功！" else "❌ 连接失败")
             } catch (e: Throwable) {
                 android.util.Log.e("SettingsVM", "testConnection 异常", e)
@@ -256,6 +275,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             keyInfos = app.database.keyInfoDao().getAllKeyInfos(),
             reviews = reviewRepo.getAllReviews().first(),
             memories = memoryRepo.getAllMemories().first(),
+            diaries = app.database.diaryDao().getAllDiaries().first(),
             settings = settingsRepo.getAllSettings().first()
         )
         gson.toJson(exportData)

@@ -12,19 +12,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 ## 构建与命令
 
+**强烈建议本机固定使用项目级 Gradle Home**，避免与其他工程共享 `%USERPROFILE%\.gradle` 导致 Test Worker classpath 串项目（`ClassNotFoundException: GradleWorkerMain`）：
+
 ```bash
-# 编译检查（命令行）
-./gradlew :app:compileDebugKotlin
-
-# 构建 debug APK
-./gradlew :app:assembleDebug
-
-# 构建 release APK
-./gradlew :app:assembleRelease
-
-# 清理
-./gradlew clean
+# 推荐写法（所有 gradlew 命令加 -g ".gradle-home"）
+./gradlew --no-daemon --max-workers=1 -g ".gradle-home" :app:compileDebugKotlin
+./gradlew --no-daemon --max-workers=1 -g ".gradle-home" :app:testDebugUnitTest
+./gradlew --no-daemon --max-workers=1 -g ".gradle-home" :app:assembleDebug
+./gradlew --no-daemon --max-workers=1 -g ".gradle-home" clean
 ```
+
+`.gradle-home/` 已在 `.gitignore` 中，勿提交。
 
 **注意**：Gradle 构建必须在项目根目录（`zhiwo-shiguangjian/`）执行，因为 `gradlew` 和 `settings.gradle.kts` 在那里。若从 `zhiwo-android/` 子目录执行，需要先 `cd` 到父目录。
 

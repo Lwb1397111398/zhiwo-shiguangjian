@@ -319,11 +319,21 @@ class AiRepository {
     }
 
     // ========== 记忆提取 ==========
+    /**
+     * @param blockedItemsText 由 [com.zhiwo.shiguangjian.data.profile.ProfileBlocklistPrompt]
+     * 渲染；空串时模板去掉占位行。仅约束 updatedProfile，不影响 newMemories。
+     */
     suspend fun extractMemoriesAndProfile(
         userContent: String,
-        currentProfile: UserProfile
+        currentProfile: UserProfile,
+        blockedItemsText: String = ""
     ): MemoryExtractionResult {
-        val prompt = MEMORY_EXTRACTION_PROMPT
+        val withBlocked = com.zhiwo.shiguangjian.data.profile.ProfileBlocklistPrompt.injectIntoTemplate(
+            template = MEMORY_EXTRACTION_PROMPT,
+            placeholder = "{{blocked_items}}",
+            rendered = blockedItemsText
+        )
+        val prompt = withBlocked
             .replace("{{current_time}}", nowFormatted())
             .replace("{{current_profile}}", gson.toJson(currentProfile))
             .replace("{{user_content}}", userContent)

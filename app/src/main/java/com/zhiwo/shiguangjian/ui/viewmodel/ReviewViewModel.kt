@@ -145,10 +145,20 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
                 }
 
                 // 提取记忆 + 画像（独立失败不影响评价/日记）
+                // 每次实时读取 flag/blocklist；flag=false 时注入空串省 token（写入侧本就会忽略 updatedProfile）
                 val extractionResult = try {
+                    val autoUpdate = settingsRepo.getProfileAutoUpdateEnabled()
+                    val blocklist = settingsRepo.getProfileBlocklist()
+                    val blockedText = if (!autoUpdate) {
+                        // autoUpdate 关闭：updatedProfile 会被丢弃，不必把 blocklist 塞进 Prompt
+                        ""
+                    } else {
+                        com.zhiwo.shiguangjian.data.profile.ProfileBlocklistPrompt.render(blocklist)
+                    }
                     aiRepo.extractMemoriesAndProfile(
                         userContent = todayRecordsText + "\n" + userInput,
-                        currentProfile = profile
+                        currentProfile = profile,
+                        blockedItemsText = blockedText
                     )
                 } catch (e: Throwable) {
                     Log.e("ReviewViewModel", "提取记忆+画像失败，不影响评价", e)

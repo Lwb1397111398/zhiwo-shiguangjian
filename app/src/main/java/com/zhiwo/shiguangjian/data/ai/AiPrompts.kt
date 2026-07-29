@@ -90,7 +90,7 @@ const val MEMORY_EXTRACTION_PROMPT = """你是个人记忆与画像维护助手�
 当前时间：{{current_time}}
 当前用户画像（JSON）：{{current_profile}}
 今日内容：{{user_content}}
-
+{{blocked_items}}
 规则：
 1. newMemories 可以为空数组，最多 2 条；没有真正新增的长期信息时必须返回 []
 2. 不要把普通情绪、重复事实、客套话、一次性琐事提取为记忆
@@ -100,7 +100,8 @@ const val MEMORY_EXTRACTION_PROMPT = """你是个人记忆与画像维护助手�
 6. appearanceFacts 只能记录用户明确自述的外貌信息，禁止根据语言、性格或行为猜测
 7. personality 只能是可修正的推测，必须带 confidence（0~1）；单次对话得出的判断用较低置信度；禁止诊断性、贬损性标签
 8. 各类列表保持精简：字符串类最多 8 条，personality 最多 6 条，recentStates 最多 5 条
-9. 只输出合法 JSON 对象，不要 Markdown 代码块，不要解释文字
+9. 若存在「禁止再次学习的内容」，这些条目不得写入 updatedProfile 的任何字段（不影响 newMemories）
+10. 只输出合法 JSON 对象，不要 Markdown 代码块，不要解释文字
 
 输出格式：
 {

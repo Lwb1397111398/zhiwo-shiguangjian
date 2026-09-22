@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.profile.UserProfileAndMemoryExtractionTest" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-09-22T03:15:22" hostname="文彬三号" time="0.042">
+  <properties/>
+  <testcase name="parse object with bad profile still keeps memories" classname="com.zhiwo.shiguangjian.data.profile.UserProfileAndMemoryExtractionTest" time="0.004"/>
+  <testcase name="sanitize clamps confidence and list sizes" classname="com.zhiwo.shiguangjian.data.profile.UserProfileAndMemoryExtractionTest" time="0.001"/>
+  <testcase name="summary includes preferences and filters expired recent states" classname="com.zhiwo.shiguangjian.data.profile.UserProfileAndMemoryExtractionTest" time="0.005"/>
+  <testcase name="mergeWith merges partial profile without clearing" classname="com.zhiwo.shiguangjian.data.profile.UserProfileAndMemoryExtractionTest" time="0.001"/>
+  <testcase name="mergeWith keeps old profile when AI returns empty" classname="com.zhiwo.shiguangjian.data.profile.UserProfileAndMemoryExtractionTest" time="0.001"/>
+  <testcase name="parse new object format keeps at most two memories and profile" classname="com.zhiwo.shiguangjian.data.profile.UserProfileAndMemoryExtractionTest" time="0.014"/>
+  <testcase name="summary never exceeds 500 chars" classname="com.zhiwo.shiguangjian.data.profile.UserProfileAndMemoryExtractionTest" time="0.001"/>
+  <testcase name="illegal confidence does not throw" classname="com.zhiwo.shiguangjian.data.profile.UserProfileAndMemoryExtractionTest" time="0.0"/>
+  <testcase name="parse object with bad memories still keeps profile" classname="com.zhiwo.shiguangjian.data.profile.UserProfileAndMemoryExtractionTest" time="0.002"/>
+  <testcase name="empty profile summary is placeholder" classname="com.zhiwo.shiguangjian.data.profile.UserProfileAndMemoryExtractionTest" time="0.0"/>
+  <testcase name="filterNewMemories uses Locale ROOT" classname="com.zhiwo.shiguangjian.data.profile.UserProfileAndMemoryExtractionTest" time="0.005"/>
+  <testcase name="parse invalid json returns empty without throwing" classname="com.zhiwo.shiguangjian.data.profile.UserProfileAndMemoryExtractionTest" time="0.001"/>
+  <testcase name="damaged profile json returns empty profile" classname="com.zhiwo.shiguangjian.data.profile.UserProfileAndMemoryExtractionTest" time="0.004"/>
+  <testcase name="parse old array format falls back and caps at two" classname="com.zhiwo.shiguangjian.data.profile.UserProfileAndMemoryExtractionTest" time="0.001"/>
+  <testcase name="filterNewMemories dedups against existing and caps at two" classname="com.zhiwo.shiguangjian.data.profile.UserProfileAndMemoryExtractionTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

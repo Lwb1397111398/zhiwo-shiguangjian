@@ -17,6 +17,7 @@ import com.zhiwo.shiguangjian.data.festival.HolidayCalendar
 import com.zhiwo.shiguangjian.data.repository.TaskOccurrenceRepository
 import com.zhiwo.shiguangjian.data.repository.TaskWriteBridge
 import com.zhiwo.shiguangjian.data.tasks.DayType
+import com.zhiwo.shiguangjian.data.tasks.deadlineDate
 import com.zhiwo.shiguangjian.data.tasks.ProgressOwner
 import com.zhiwo.shiguangjian.data.tasks.ProgressSpan
 import com.zhiwo.shiguangjian.data.tasks.dayTypeOf
@@ -187,7 +188,7 @@ class GoalDetailViewModel(application: Application) : AndroidViewModel(applicati
     private fun overdueAdhoc(tasks: List<TaskEntity>, occs: List<TaskOccurrenceEntity>): Int {
         val doneIds = occs.filter { it.status == "done" }.map { it.taskId }.toSet()
         return tasks.count { t ->
-            val day = if (t.scheduledDate.isNotBlank()) t.scheduledDate.take(10) else t.dueDate.take(10)
+            val day = if (t.scheduledDate.isNotBlank()) t.scheduledDate.take(10) else t.deadlineDate
             t.kind.trim().lowercase() == "adhoc" && t.status.trim().lowercase() == "active" &&
                 t.id !in doneIds && day.isNotBlank() && day < today
         }
@@ -236,7 +237,7 @@ class GoalDetailViewModel(application: Application) : AndroidViewModel(applicati
                 val kind = task.kind.trim().lowercase()
                 if (kind == "adhoc") {
                     // adhoc 是"那天的一次性事实"，不动它的状态，只把还欠着的那条坐实
-                    val day = if (task.scheduledDate.isNotBlank()) task.scheduledDate.take(10) else task.dueDate.take(10)
+                    val day = if (task.scheduledDate.isNotBlank()) task.scheduledDate.take(10) else task.deadlineDate
                     val owed = task.status.trim().lowercase() == "active" && task.id !in doneEver &&
                         day.isNotBlank() && day <= today
                     if (owed) occurrences.setCheck(task.id, day, "not_done", "changed", note, now = now)

@@ -190,7 +190,7 @@ fun entriesFor(
 
         if (kind == "adhoc") {
             val scheduled = engineDate(task.scheduledDate)
-            val due = engineDate(task.dueDate)
+            val due = engineDate(task.deadlineDate)
             val isDone = isEffectivelyDone(occ, date)
             when {
                 isDone -> done += DayEntry(task, occ, EntryState.DONE, EntrySection.ADHOC_TODAY)

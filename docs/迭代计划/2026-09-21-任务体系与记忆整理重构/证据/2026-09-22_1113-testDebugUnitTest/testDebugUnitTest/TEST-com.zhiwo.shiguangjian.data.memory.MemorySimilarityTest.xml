@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.memory.MemorySimilarityTest" tests="17" skipped="0" failures="0" errors="0" timestamp="2026-09-22T03:15:22" hostname="文彬三号" time="0.049">
+  <properties/>
+  <testcase name="MFS02_全角标点转半角或直接丢弃" classname="com.zhiwo.shiguangjian.data.memory.MemorySimilarityTest" time="0.003"/>
+  <testcase name="MFS15_只差一个数字不得判重" classname="com.zhiwo.shiguangjian.data.memory.MemorySimilarityTest" time="0.026"/>
+  <testcase name="MFS04_CONTAINS_长度差边界_8_含_9_不含" classname="com.zhiwo.shiguangjian.data.memory.MemorySimilarityTest" time="0.001"/>
+  <testcase name="MFS07c_数字不一致时字形再像也判_DIFFERENT" classname="com.zhiwo.shiguangjian.data.memory.MemorySimilarityTest" time="0.001"/>
+  <testcase name="MFS03_大小写与全角字母数字归一" classname="com.zhiwo.shiguangjian.data.memory.MemorySimilarityTest" time="0.001"/>
+  <testcase name="MFS13_只有标点与空格差异判_EXACT" classname="com.zhiwo.shiguangjian.data.memory.MemorySimilarityTest" time="0.001"/>
+  <testcase name="MFS05_被包含方太短不算_CONTAINS" classname="com.zhiwo.shiguangjian.data.memory.MemorySimilarityTest" time="0.0"/>
+  <testcase name="MFS07_得分达到阈值判_SIMILAR" classname="com.zhiwo.shiguangjian.data.memory.MemorySimilarityTest" time="0.0"/>
+  <testcase name="MFS01_空串与全空格归一为空" classname="com.zhiwo.shiguangjian.data.memory.MemorySimilarityTest" time="0.001"/>
+  <testcase name="MFS06_得分低于阈值判_DIFFERENT" classname="com.zhiwo.shiguangjian.data.memory.MemorySimilarityTest" time="0.001"/>
+  <testcase name="MFS14_autoMergeable_只放行_EXACT_与_CONTAINS" classname="com.zhiwo.shiguangjian.data.memory.MemorySimilarityTest" time="0.003"/>
+  <testcase name="MFS07b_dice_系数的字符集与bigram两路分别可查" classname="com.zhiwo.shiguangjian.data.memory.MemorySimilarityTest" time="0.001"/>
+  <testcase name="MFS09_两件不同的事必须判_DIFFERENT" classname="com.zhiwo.shiguangjian.data.memory.MemorySimilarityTest" time="0.0"/>
+  <testcase name="MFS12_换行与引号不算差异" classname="com.zhiwo.shiguangjian.data.memory.MemorySimilarityTest" time="0.001"/>
+  <testcase name="MFS08_换个说法的同一条记忆判_SIMILAR" classname="com.zhiwo.shiguangjian.data.memory.MemorySimilarityTest" time="0.001"/>
+  <testcase name="MFS10_自反性必为_EXACT" classname="com.zhiwo.shiguangjian.data.memory.MemorySimilarityTest" time="0.005"/>
+  <testcase name="MFS11_normalize_幂等" classname="com.zhiwo.shiguangjian.data.memory.MemorySimilarityTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

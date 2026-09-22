@@ -70,7 +70,7 @@ fun weekProgress(
         days.forEach { day ->
             // 临时任务只在它指定的那一天计数，否则一条周内的 adhoc 会贡献 7 个"应做"
             if (task.kind == "adhoc") {
-                val anchor = task.scheduledDate.ifBlank { task.dueDate.take(10) }
+                val anchor = task.scheduledDate.ifBlank { task.deadlineDate }
                 if (anchor.isNotBlank() && day != anchor) return@forEach
             }
             if (!isScheduledOn(task, day, dayTypeOfDate(day))) return@forEach

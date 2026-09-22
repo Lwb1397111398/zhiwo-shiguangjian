@@ -26,6 +26,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.zhiwo.shiguangjian.data.ai.DateFormats
 import com.zhiwo.shiguangjian.data.db.entity.TaskEntity
 import com.zhiwo.shiguangjian.data.tasks.DayEntry
+import com.zhiwo.shiguangjian.data.tasks.deadlineDate
 import com.zhiwo.shiguangjian.ui.theme.Success
 import com.zhiwo.shiguangjian.ui.viewmodel.ScheduleSectionGroup
 import com.zhiwo.shiguangjian.ui.viewmodel.ScheduleUiState
@@ -363,9 +364,11 @@ private fun TaskEditorSheet(
     var repeatRule by remember(initial) { mutableStateOf(initial?.repeatRule ?: "everyday") }
     var dayPolicy by remember(initial) { mutableStateOf(initial?.dayPolicy ?: "all") }
     var startDate by remember(initial) { mutableStateOf(initial?.startDate ?: "") }
-    var endDate by remember(initial) { mutableStateOf(initial?.endDate ?: "") }
+    // adhoc 的"最后期限"存在这里：新写 endDate，v14 之前同时镜像到老 dueDate（回滚到 v13 代码也不坏）
+    var endDate by remember(initial) {
+        mutableStateOf(if (initial?.kind == "adhoc") initial.deadlineDate else initial?.endDate ?: "")
+    }
     var scheduledDate by remember(initial) { mutableStateOf(initial?.scheduledDate ?: defaultDate) }
-    var dueDate by remember(initial) { mutableStateOf(initial?.dueDate ?: "") }
     var duration by remember(initial) { mutableStateOf((initial?.durationMinutes ?: 60).toString()) }
     var remindTime by remember(initial) { mutableStateOf(initial?.remindTime ?: "") }
     var picking by remember { mutableStateOf("") }
@@ -397,8 +400,8 @@ private fun TaskEditorSheet(
             }
             "adhoc" -> {
                 DateField("哪一天出现", scheduledDate, onOpen = { picking = "sched" }, onClear = { scheduledDate = "" })
-                DateField("最后期限（可留空）", dueDate, onOpen = { picking = "due" }, onClear = { dueDate = "" })
-                if (dueDate.isNotBlank() && scheduledDate.isNotBlank() && dueDate < scheduledDate) {
+                DateField("最后期限（可留空）", endDate, onOpen = { picking = "end" }, onClear = { endDate = "" })
+                if (endDate.isNotBlank() && scheduledDate.isNotBlank() && endDate < scheduledDate) {
                     Text("期限早于出现日期：这天一到就会显示过期", color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall)
                 }
@@ -424,14 +427,12 @@ private fun TaskEditorSheet(
                 initial = when (picking) {
                     "start" -> startDate.ifBlank { now }
                     "end" -> endDate.ifBlank { now }
-                    "due" -> dueDate.ifBlank { now }
                     else -> scheduledDate.ifBlank { now }
                 },
                 onConfirm = { day ->
                     when (picking) {
                         "start" -> startDate = day
                         "end" -> endDate = day
-                        "due" -> dueDate = day
                         else -> scheduledDate = day
                     }
                     picking = ""
@@ -455,9 +456,9 @@ private fun TaskEditorSheet(
                         content = trimmed, kind = kind, repeatRule = if (kind == "daily") repeatRule else "everyday",
                         dayPolicy = if (kind == "adhoc") "all" else dayPolicy,
                         startDate = if (kind == "daily") startDate else "",
-                        endDate = if (kind == "daily") endDate else "",
+                        endDate = if (kind == "daily" || kind == "adhoc") endDate else "",
                         scheduledDate = if (kind == "adhoc") scheduledDate else "",
-                        dueDate = if (kind == "adhoc") dueDate else "",
+                        dueDate = if (kind == "adhoc") endDate else "",
                         durationMinutes = if (kind == "blank") 60 else minutes,
                         remindTime = remindTime.takeIf { it.matches(Regex("""^([01]\d|2[0-3]):[0-5]\d$""")) } ?: ""
                     ))

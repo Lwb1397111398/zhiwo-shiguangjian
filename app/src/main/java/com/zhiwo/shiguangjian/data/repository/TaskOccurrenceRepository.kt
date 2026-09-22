@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import com.zhiwo.shiguangjian.data.db.AppDatabase
 import com.zhiwo.shiguangjian.data.db.entity.TaskEntity
 import com.zhiwo.shiguangjian.data.db.entity.TaskOccurrenceEntity
+import com.zhiwo.shiguangjian.data.tasks.deadlineDate
 
 /**
  * 打卡的唯一写入口。撤销完成写软标记 pending 而不是删行——用户填过的原因要留着。
@@ -125,7 +126,7 @@ class TaskWriteBridge(private val db: AppDatabase) {
         // 闹钟与开机恢复只认带时间的老 dueDate：每日/留白任务没有 dueDate 时用开始日（再退到创建日）当锚，
         // 否则新用户的每日任务永远不响
         val date = when (task.kind) {
-            "adhoc" -> task.scheduledDate.ifBlank { task.dueDate.take(10) }
+            "adhoc" -> task.scheduledDate.ifBlank { task.deadlineDate }
             else -> task.dueDate.take(10).ifBlank {
                 task.startDate.ifBlank { task.createdAt.take(10) }
             }

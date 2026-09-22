@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.memory.MemoryReconciliationTest" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-09-22T03:15:22" hostname="文彬三号" time="0.024">
+  <properties/>
+  <testcase name="parse markdown fenced json" classname="com.zhiwo.shiguangjian.data.memory.MemoryReconciliationTest" time="0.005"/>
+  <testcase name="mergePending replaces same memory and keeps order" classname="com.zhiwo.shiguangjian.data.memory.MemoryReconciliationTest" time="0.002"/>
+  <testcase name="MFR01 mergePendingWithDropped reports exactly the overflowed suggestions" classname="com.zhiwo.shiguangjian.data.memory.MemoryReconciliationTest" time="0.004"/>
+  <testcase name="parse accepts memory_id alias" classname="com.zhiwo.shiguangjian.data.memory.MemoryReconciliationTest" time="0.001"/>
+  <testcase name="parse skips broken entries and continues" classname="com.zhiwo.shiguangjian.data.memory.MemoryReconciliationTest" time="0.001"/>
+  <testcase name="revise without newText degrades to supersede" classname="com.zhiwo.shiguangjian.data.memory.MemoryReconciliationTest" time="0.003"/>
+  <testcase name="MFR02 mergePendingWithDropped without overflow drops nothing" classname="com.zhiwo.shiguangjian.data.memory.MemoryReconciliationTest" time="0.0"/>
+  <testcase name="mergePending drops oldest beyond limit" classname="com.zhiwo.shiguangjian.data.memory.MemoryReconciliationTest" time="0.0"/>
+  <testcase name="medium confidence goes to pending" classname="com.zhiwo.shiguangjian.data.memory.MemoryReconciliationTest" time="0.0"/>
+  <testcase name="parse empty array and garbage return empty" classname="com.zhiwo.shiguangjian.data.memory.MemoryReconciliationTest" time="0.0"/>
+  <testcase name="MFR03 orphanUnderReviewIds 找出队列里已无对应建议的记忆" classname="com.zhiwo.shiguangjian.data.memory.MemoryReconciliationTest" time="0.001"/>
+  <testcase name="invalid memory id and keep action are dropped" classname="com.zhiwo.shiguangjian.data.memory.MemoryReconciliationTest" time="0.0"/>
+  <testcase name="law_exam scenario - high confidence supersede auto applies" classname="com.zhiwo.shiguangjian.data.memory.MemoryReconciliationTest" time="0.001"/>
+  <testcase name="parse plain json array" classname="com.zhiwo.shiguangjian.data.memory.MemoryReconciliationTest" time="0.0"/>
+  <testcase name="duplicate suggestions for same memory keep first" classname="com.zhiwo.shiguangjian.data.memory.MemoryReconciliationTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

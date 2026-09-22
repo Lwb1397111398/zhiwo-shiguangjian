@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" tests="41" skipped="0" failures="0" errors="0" timestamp="2026-09-22T03:25:59" hostname="文彬三号" time="0.147">
+  <properties/>
+  <testcase name="MFV07_merge_内容哈希变了判_STALE" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.045"/>
+  <testcase name="evolve stale when memory deleted and new text absent" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.015"/>
+  <testcase name="MFV14_delete_source_没绑定任何源判非法" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.009"/>
+  <testcase name="MFV15_planDedupeMerges_只合_EXACT_与_CONTAINS" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.002"/>
+  <testcase name="MFV05_merge_目标全部生效中且哈希一致才执行" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.003"/>
+  <testcase name="unknown type is invalid" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.0"/>
+  <testcase name="evolve stale when memory content changed since proposal" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.0"/>
+  <testcase name="plan batch includes blocked ops for dependency re-evaluation" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.007"/>
+  <testcase name="delete source executes when only some sources remain and unchanged" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="dependency blocked when a dep is missing or pending" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.003"/>
+  <testcase name="MFV08_merge_已达成目标态判幂等" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.003"/>
+  <testcase name="MFV11_未知类型与漏登记类型都能被识别" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="payloads roundtrip" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.007"/>
+  <testcase name="dependency blocked when a dep failed" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="MFV12_执行顺序表与_decide_分支一一对应" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.008"/>
+  <testcase name="MFV16_filterSaveProposals_跳过重复但保留疑似重复" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.003"/>
+  <testcase name="dependency satisfied only when all deps applied" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.002"/>
+  <testcase name="evolve executes when memory active and text matches" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="evolve already applied when new text exists and old superseded" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="plan batch keeps only checked pending and sorts by type priority" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="MFV10_delete_memory_哈希不一致拒绝物理删_不存在算已达成" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.002"/>
+  <testcase name="content hash is stable and collision-tested for edit detection" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="save memory is idempotent when same active text exists" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="save memory executes when no duplicate active memory" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="MFV06_merge_目标非_active_判_STALE" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.003"/>
+  <testcase name="save memory executes when same text only exists as superseded" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="MFV01_save_memory_CONTAINS_判重不放行" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="delete source executes when sources unchanged" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.002"/>
+  <testcase name="delete source is stale when record content changed" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.002"/>
+  <testcase name="MFV02_save_memory_只有标点空格差异也是重复" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.0"/>
+  <testcase name="delete source not stale when only updatedAt changed but hash matches" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="MFV04_merge_只传一个_id_非法" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="plan batch with all applied returns empty" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.0"/>
+  <testcase name="MFV13_载荷损坏时_decide_不抛异常" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="MFV09_split_少于两条非法_哈希变了_STALE" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="delete source falls back to version check when hash missing" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="delete source already applied when all sources gone" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.0"/>
+  <testcase name="save memory with blank content is invalid" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="MFV03_save_memory_SIMILAR_只提示不自动拦" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="MFV17_planBatch_新类型顺序与_onlyChecked_开关" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.0"/>
+  <testcase name="garbage payload decodes to null without throwing" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

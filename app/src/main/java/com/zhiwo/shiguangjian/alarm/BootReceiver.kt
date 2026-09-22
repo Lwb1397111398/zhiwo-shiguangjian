@@ -11,66 +11,66 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
+/**
+ * 开机后把闹钟请回来。
+ *
+ * v13 这里自己读 `isCompleted/dueDate/taskType` 拼一次性闹钟，于是每日任务重启后只响"今天+明天"两枪，
+ * 之后静默。现在把注册交给与"保存任务"完全同一条路径（`SmartScheduleManager.scheduleTask`）：
+ * 每日/留白挂系统级每日重复闹钟（自带自愈，不依赖任何续排链），临时任务挂一次性，
+ * 该不该响由 [ReminderGate] 在触发时判。
+ */
 class BootReceiver : BroadcastReceiver() {
 
-    private var scope: CoroutineScope? = null
-
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
-            Log.d("BootReceiver", "开机完成，重新设置闹钟")
-            // 固定闹钟恢复（受智能提醒开关控制，读设置需协程）+ 任务闹钟恢复
-            val pendingResult = goAsync()
-            restoreTaskAlarms(context.applicationContext, pendingResult)
-        }
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
+        Log.d("BootReceiver", "开机完成，重新设置闹钟")
+        val pendingResult = goAsync()
+        restore(context.applicationContext, pendingResult)
     }
 
-    private fun restoreTaskAlarms(context: Context, pendingResult: PendingResult) {
+    private fun restore(context: Context, pendingResult: PendingResult) {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        this.scope = scope
         scope.launch {
+            val startedAt = System.currentTimeMillis()
+            var restored = 0
+            var cleaned = 0
+            var skippedExpired = 0
             try {
-                // 恢复固定闹钟（受智能提醒开关控制）
                 try {
                     AlarmScheduler.syncFixedAlarms(context)
                 } catch (e: Exception) {
                     Log.e("BootReceiver", "开机重新设置固定闹钟失败: ${e.message}", e)
                 }
-                val app = context.applicationContext as? ZhiwoApplication ?: return@launch
-                val taskDao = app.database.taskDao()
-                // 获取所有未完成的任务
-                val allTasks = taskDao.getAllTasksList()
+                val app = context as? ZhiwoApplication ?: return@launch
+                val tasks = app.database.taskDao().getAllTasksList()
                 val now = System.currentTimeMillis()
-                var restored = 0
-                for (task in allTasks) {
-                    if (task.isCompleted) continue
-                    if (task.dueDate.isBlank()) continue
-                    val startMillis = parseDueDate(task.dueDate) ?: continue
-                    // 跳过已过期超过 1 小时的任务
-                    if (startMillis < now - 3600_000) continue
-                    val alarmId = SmartScheduleManager.taskIdToAlarmId(task.id)
-                    val triggerAtMillis = startMillis - 15 * 60 * 1000 // 提前 15 分钟
-                    if (triggerAtMillis > now) {
-                        AlarmScheduler.scheduleTaskAlarm(
-                            context = context,
-                            alarmId = alarmId,
-                            triggerAtMillis = triggerAtMillis,
-                            title = task.content,
-                            message = "⏰ 15分钟后：${task.content}"
-                        )
-                        restored++
+                for (task in tasks.take(MAX_TASKS_AT_BOOT)) {
+                    val repeating = task.kind.trim().lowercase() in REPEATING_KINDS
+                    val active = task.status.trim().lowercase() == "active"
+                    val deadline = if (repeating) null else parseLooseDateTime(task.dueDate)
+                    if (!active || task.remindTime.isBlank() || (!repeating && deadline != null && deadline < now - GRACE_MILLIS)) {
+                        // v13 只看 isCompleted，暂停/归档的任务重启后照样响；这里反过来：不该提醒的一律清干净
+                        cancelEveryAlarmId(context, task.id)
+                        cleaned++
+                        if (!repeating && deadline != null && deadline < now - GRACE_MILLIS) skippedExpired++
+                        continue
                     }
-                    // 对于 daily 类型，恢复明天的提醒
-                    if (task.taskType == "daily") {
-                        AlarmScheduler.scheduleTaskAlarm(
-                            context = context,
-                            alarmId = SmartScheduleManager.dailyNextDayAlarmId(task.id), // 使用不同 ID 避免冲突
-                            triggerAtMillis = startMillis + 24 * 3600_000 - 15 * 60 * 1000,
-                            title = task.content,
-                            message = "⏰ 15分钟后：${task.content}"
-                        )
-                    }
+                    val (_, alarmId) = SmartScheduleManager.scheduleTask(
+                        context = context,
+                        taskId = task.id,
+                        taskContent = task.content,
+                        taskType = task.taskType,
+                        dueDate = task.dueDate,
+                        recordTitle = task.content,
+                        syncCalendar = false
+                    )
+                    if (alarmId != 0) restored++
                 }
-                Log.d("BootReceiver", "任务闹钟恢复完成，恢复了 $restored 个提醒")
+                Log.d(
+                    "BootReceiver",
+                    "任务闹钟恢复完成：注册 $restored，清理 $cleaned（其中过期一次性 $skippedExpired），" +
+                        "共 ${tasks.size} 个任务，耗时 ${System.currentTimeMillis() - startedAt}ms"
+                )
             } catch (e: Exception) {
                 Log.e("BootReceiver", "恢复任务闹钟失败: ${e.message}", e)
             } finally {
@@ -80,17 +80,30 @@ class BootReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun parseDueDate(dueDate: String): Long? {
+    private fun cancelEveryAlarmId(context: Context, taskId: Long) {
+        AlarmScheduler.cancelTaskAlarm(context, SmartScheduleManager.taskIdToAlarmId(taskId))
+        ReminderIds.legacyIds(taskId).forEach { AlarmScheduler.cancelTaskAlarm(context, it) }
+    }
+
+    /** 老 dueDate 可能是 "yyyy-MM-dd HH:mm:ss" 也可能只有日期（只有日期时按 09:00 算） */
+    private fun parseLooseDateTime(value: String): Long? {
+        if (value.isBlank()) return null
         return try {
             java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
-                .parse(dueDate)?.time
+                .parse(value.take(19))?.time
         } catch (_: Exception) {
             try {
                 java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
-                    .parse(dueDate)?.time?.plus(9 * 3600 * 1000)
+                    .parse(value.take(10))?.time?.plus(9 * 3600_000)
             } catch (_: Exception) {
                 null
             }
         }
+    }
+
+    private companion object {
+        const val GRACE_MILLIS = 3600_000L
+        const val MAX_TASKS_AT_BOOT = 500
+        val REPEATING_KINDS = setOf("daily", "blank")
     }
 }

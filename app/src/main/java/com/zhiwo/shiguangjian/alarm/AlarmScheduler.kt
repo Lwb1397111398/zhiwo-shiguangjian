@@ -261,12 +261,8 @@ object AlarmScheduler {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         alarmManager.cancel(pendingIntent)
-        // 同时取消可能存在的重复闹钟（ID+1）
-        val pendingIntent2 = PendingIntent.getBroadcast(
-            context, alarmId + 1, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        alarmManager.cancel(pendingIntent2)
+        // 一个任务只有一个闹钟码（旧公式的 +1 副码由调用方按 ReminderIds.legacyIds 显式清理），
+        // 这里不再"顺手多取消 alarmId+1"——那会掐掉相邻任务的提醒
         Log.d("AlarmScheduler", "任务闹钟已取消: id=$alarmId")
     }
 

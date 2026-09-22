@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.ai.AiModelsTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-09-22T03:25:58" hostname="文彬三号" time="0.005">
+  <properties/>
+  <testcase name="resolveCategory trims english values before matching" classname="com.zhiwo.shiguangjian.data.ai.AiModelsTest" time="0.002"/>
+  <testcase name="resolveCategory trims chinese values before fuzzy matching" classname="com.zhiwo.shiguangjian.data.ai.AiModelsTest" time="0.0"/>
+  <testcase name="resolveCategory falls back to other for blank or unknown values" classname="com.zhiwo.shiguangjian.data.ai.AiModelsTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

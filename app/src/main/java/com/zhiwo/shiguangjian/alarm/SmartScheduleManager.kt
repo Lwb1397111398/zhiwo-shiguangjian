@@ -17,10 +17,7 @@ object SmartScheduleManager {
     private const val EVENT_DURATION_MILLIS = 60 * 60 * 1000L  // 事件持续1小时
 
     /** 任务闹钟 ID 的唯一换算公式，所有注册/取消/恢复路径必须统一使用 */
-    fun taskIdToAlarmId(taskId: Long): Int = (taskId + 10000).toInt()
-
-    /** daily 任务"明日提醒"专用 ID，避免与当日提醒冲突 */
-    fun dailyNextDayAlarmId(taskId: Long): Int = taskIdToAlarmId(taskId) + 1
+    fun taskIdToAlarmId(taskId: Long): Int = ReminderIds.of(taskId)
 
     /**
      * 为任务创建日历事件和提醒闹钟
@@ -72,6 +69,8 @@ object SmartScheduleManager {
 
         // 创建提醒闹钟（与取消/开机恢复统一使用同一换算公式）
         val alarmId = taskIdToAlarmId(taskId)
+        // 一个任务只有一个码：先清掉旧公式留下的两个码，否则升级后新旧两把闹钟各响一次
+        ReminderIds.legacyIds(taskId).forEach { AlarmScheduler.cancelTaskAlarm(context, it) }
 
         when (taskType) {
             "daily" -> {
@@ -132,7 +131,7 @@ object SmartScheduleManager {
         // 两个 id 都要取消：BootReceiver 会为 daily 任务额外注册"明日提醒"，
         // 只取消当日那个会让它变成僵尸闹钟，重启后还被再注册一次。
         AlarmScheduler.cancelTaskAlarm(context, taskIdToAlarmId(taskId))
-        AlarmScheduler.cancelTaskAlarm(context, dailyNextDayAlarmId(taskId))
+        ReminderIds.legacyIds(taskId).forEach { AlarmScheduler.cancelTaskAlarm(context, it) }
         calendarEventId?.let { CalendarHelper.deleteEvent(context, it) }
     }
 }

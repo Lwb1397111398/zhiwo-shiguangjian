@@ -13,7 +13,9 @@ import java.util.*
  */
 object SmartScheduleManager {
 
-    private const val REMIND_MINUTES_BEFORE = 15L  // 提前15分钟提醒
+    // 编辑器里填的就是「提醒时间」，老实现又减 15 分钟，等于每一条提醒都比用户设的时刻早一刻钟响。
+    // 桥接已经把 remindTime 原样写进老 dueDate 当提醒时刻，这里就不要再偏移。
+    private const val REMIND_MINUTES_BEFORE = 0L
     private const val EVENT_DURATION_MILLIS = 60 * 60 * 1000L  // 事件持续1小时
 
     /** 任务闹钟 ID 的唯一换算公式，所有注册/取消/恢复路径必须统一使用 */
@@ -89,16 +91,17 @@ object SmartScheduleManager {
                 )
             }
             "weekly" -> {
-                // 每周重复：每周同一时间提醒
+                // 「选星期」的任务：挂**每日**重复闹钟，由 ReminderGate 在触发时按 weekdaysCsv 挡掉
+                // 没选中的日子。一周一次的闹钟只能锁一个星期几，多选的日子就永远不响（质检 C1）。
                 val remindMillis = startMillis - REMIND_MINUTES_BEFORE * 60 * 1000
                 val firstTrigger = ReminderIds.nextRepeatingTrigger(
-                    remindMillis, AlarmManager.INTERVAL_DAY * 7, System.currentTimeMillis()
+                    remindMillis, AlarmManager.INTERVAL_DAY, System.currentTimeMillis()
                 )
                 AlarmScheduler.scheduleRepeatingTaskAlarm(
                     context = context,
                     alarmId = alarmId,
                     firstTriggerAtMillis = firstTrigger,
-                    intervalMillis = AlarmManager.INTERVAL_DAY * 7,
+                    intervalMillis = AlarmManager.INTERVAL_DAY,
                     title = taskContent,
                     message = "⏰ 每周提醒：$taskContent"
                 )
@@ -112,7 +115,7 @@ object SmartScheduleManager {
                         alarmId = alarmId,
                         triggerAtMillis = remindMillis,
                         title = taskContent,
-                        message = "⏰ 15分钟后：$taskContent"
+                        message = "⏰ 该做了：$taskContent"
                     )
                 }
             }

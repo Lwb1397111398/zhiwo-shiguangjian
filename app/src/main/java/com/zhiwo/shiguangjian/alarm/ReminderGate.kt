@@ -48,6 +48,8 @@ object ReminderGate {
 
     /** 从库里凑齐判定材料；任务查不到时返回 false（任务已不存在，不该再响） */
     suspend fun shouldRemindNow(
+        // 只用于 HolidaySets.of 的签名；广播里不许现查系统日历（10 秒窗 + vivo 杀后台），
+        // 预热统一在 App 启动协程与授权回调里做
         ctx: android.content.Context,
         db: AppDatabase,
         taskId: Long,
@@ -55,7 +57,6 @@ object ReminderGate {
     ): Boolean {
         val task = db.taskDao().getTaskById(taskId) ?: return false
         val year = today.take(4).toIntOrNull()
-        if (year != null) com.zhiwo.shiguangjian.data.festival.HolidaySets.warm(ctx, year)
         // 内置公告优先，公告没覆盖那一年才读系统日历（见 HolidaySets）；两边都没有就是空集，按周末猜
         val sets: Pair<Set<String>, Set<String>> =
             if (year == null) emptySet<String>() to emptySet<String>()

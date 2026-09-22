@@ -46,16 +46,4 @@ object HolidaySets {
 
     /** 授予日历权限之后调用，让下一次预热重新真读一遍 */
     fun invalidate() = cache.clear()
-
-    /** 给设置页/提示语用的来源说明；只读缓存，不查库 */
-    fun sourceLabel(ctx: Context?, year: Int): String = when {
-        HolidayCalendar.hasDataFor(year) -> "内置公告（${HolidayCalendar.SOURCE}）"
-        cache.containsKey(year) -> "系统日历（读到 ${cache[year]!!.first.size} 个休息日、${cache[year]!!.second.size} 个调休上班日）"
-        ctx == null -> "未找到（按周末判定）"
-        else -> DeviceHolidaySource.read(ctx, year).let {
-            if (it.holidays.isEmpty() && it.makeupWorkdays.isEmpty())
-                "没找到节假日日历（${it.note}）：按周末判定"
-            else "系统日历《${it.calendarName}》：${it.note}"
-        }
-    }
 }

@@ -291,26 +291,30 @@ abstract class AppDatabase : RoomDatabase() {
                     DbGate.markRebuilt(context.applicationContext, "（原来就没有数据库文件）")
                 }
             INSTANCE = null
-            return getInstance(context)
+            // 确认标记只在真删成之后才消耗：删失败抛异常时标记还在，下次冷启动会重试，
+            // 不会把用户打过的"清空重建"白白吞掉
+            DbGate.takeRebuildRequest(context.applicationContext)
+            return buildInstance(context)
         }
+
+        private fun buildInstance(context: Context): AppDatabase = Room.databaseBuilder(
+            context.applicationContext,
+            AppDatabase::class.java,
+            DATABASE_NAME
+        )
+            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
+            // 正式版与开发版都不允许静默清库：缺迁移必须抛出来，由用户在失败页上决定重试还是清库
+            .build()
+            .also { INSTANCE = it }
 
         fun getInstance(context: Context): AppDatabase = synchronized(this) {
             // 冷启动只有一条路会清库：用户在失败页上打字确认后留下的标记（见 DbGate）；
             // 迁移异常本身绝不再触发清库 —— 以前是 catch 完直接 rebuild，用户只会看见"记录全空了"。
             // 检查标记与清库放在同一把锁里：门的协程和 BootReceiver 可能同时进来，跑两遍会把刚建好的新库再删一次。
             if (INSTANCE == null && DbGate.rebuildRequested(context.applicationContext)) {
-                DbGate.takeRebuildRequest(context.applicationContext)
                 rebuild(context)
             } else {
-                INSTANCE ?: Room.databaseBuilder(
-                    context.applicationContext,
-                    AppDatabase::class.java,
-                    DATABASE_NAME
-                )
-                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
-                    // 正式版与开发版都不允许静默清库：缺迁移必须抛出来，由 rebuild 的备份路径兜底
-                    .build()
-                    .also { INSTANCE = it }
+                INSTANCE ?: buildInstance(context)
             }
         }
 

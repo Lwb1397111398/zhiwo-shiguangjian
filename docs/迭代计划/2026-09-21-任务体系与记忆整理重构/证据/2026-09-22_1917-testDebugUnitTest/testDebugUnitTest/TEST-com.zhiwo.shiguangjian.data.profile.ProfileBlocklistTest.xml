@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.profile.ProfileBlocklistTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-09-22T11:19:50" hostname="文彬三号" time="0.012">
+  <properties/>
+  <testcase name="damaged json returns empty" classname="com.zhiwo.shiguangjian.data.profile.ProfileBlocklistTest" time="0.003"/>
+  <testcase name="fifo max 50 and dedup" classname="com.zhiwo.shiguangjian.data.profile.ProfileBlocklistTest" time="0.005"/>
+  <testcase name="filterBlocked removes matching entries case insensitive" classname="com.zhiwo.shiguangjian.data.profile.ProfileBlocklistTest" time="0.003"/>
+  <testcase name="unblocked removes by normalized key" classname="com.zhiwo.shiguangjian.data.profile.ProfileBlocklistTest" time="0.0"/>
+  <testcase name="serialize roundtrip" classname="com.zhiwo.shiguangjian.data.profile.ProfileBlocklistTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

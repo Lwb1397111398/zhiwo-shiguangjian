@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.diary.HistoryCorrectionScannerTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-09-22T11:19:49" hostname="文彬三号" time="0.019">
+  <properties/>
+  <testcase name="no superseded memories yields no hits" classname="com.zhiwo.shiguangjian.data.diary.HistoryCorrectionScannerTest" time="0.007"/>
+  <testcase name="law exam scenario - old diary referencing superseded memory is hit" classname="com.zhiwo.shiguangjian.data.diary.HistoryCorrectionScannerTest" time="0.005"/>
+  <testcase name="paraphrased reference is not matched - known heuristic limitation" classname="com.zhiwo.shiguangjian.data.diary.HistoryCorrectionScannerTest" time="0.0"/>
+  <testcase name="token extraction splits punctuation and windows long segments" classname="com.zhiwo.shiguangjian.data.diary.HistoryCorrectionScannerTest" time="0.0"/>
+  <testcase name="content generated after correction is not hit" classname="com.zhiwo.shiguangjian.data.diary.HistoryCorrectionScannerTest" time="0.0"/>
+  <testcase name="user edited diary is flagged but not silently regenerated" classname="com.zhiwo.shiguangjian.data.diary.HistoryCorrectionScannerTest" time="0.001"/>
+  <testcase name="review hits are reported as review type" classname="com.zhiwo.shiguangjian.data.diary.HistoryCorrectionScannerTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

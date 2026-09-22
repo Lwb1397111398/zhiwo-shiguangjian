@@ -47,8 +47,9 @@ class BootReceiver : BroadcastReceiver() {
                 for (task in tasks.take(MAX_TASKS_AT_BOOT)) {
                     val repeating = task.kind.trim().lowercase() in REPEATING_KINDS
                     val active = task.status.trim().lowercase() == "active"
-                    // 提醒时刻可以来自新 remindTime，也可以来自老 dueDate 里带的时间（v13 迁移进来的任务只有后者）
-                    val hasTime = task.remindTime.isNotBlank() || task.dueDate.contains(' ')
+                    // 与保存路径同一把口径（ScheduleViewModel 只在 remindTime 非空时注册）：
+                    // 用老 dueDate 带不带时间来推断会让"用户已关掉提醒"的任务重启后又响（质检 C3）
+                    val hasTime = task.remindTime.isNotBlank()
                     val deadline = if (repeating) null else parseLooseDateTime(task.dueDate)
                     if (!active || !hasTime || (!repeating && deadline != null && deadline < now - GRACE_MILLIS)) {
                         // v13 只看 isCompleted，暂停/归档的任务重启后照样响；这里反过来：不该提醒的一律清干净

@@ -89,10 +89,6 @@ class TaskWriteBridge(private val db: AppDatabase) {
         task.copy(status = "archived", isPermanentlyCompleted = true)
     )
 
-    suspend fun unarchive(task: TaskEntity) = taskDao.updateTask(
-        task.copy(status = "active", isPermanentlyCompleted = false)
-    )
-
     suspend fun pause(task: TaskEntity) = taskDao.updateTask(task.copy(status = "paused"))
 
     suspend fun resume(task: TaskEntity) = taskDao.updateTask(task.copy(status = "active"))

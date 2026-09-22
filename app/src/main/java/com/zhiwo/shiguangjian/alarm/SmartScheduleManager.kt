@@ -16,6 +16,12 @@ object SmartScheduleManager {
     private const val REMIND_MINUTES_BEFORE = 15L  // 提前15分钟提醒
     private const val EVENT_DURATION_MILLIS = 60 * 60 * 1000L  // 事件持续1小时
 
+    /** 任务闹钟 ID 的唯一换算公式，所有注册/取消/恢复路径必须统一使用 */
+    fun taskIdToAlarmId(taskId: Long): Int = (taskId + 10000).toInt()
+
+    /** daily 任务"明日提醒"专用 ID，避免与当日提醒冲突 */
+    fun dailyNextDayAlarmId(taskId: Long): Int = taskIdToAlarmId(taskId) + 1
+
     /**
      * 为任务创建日历事件和提醒闹钟
      * @param context 上下文
@@ -32,7 +38,8 @@ object SmartScheduleManager {
         taskContent: String,
         taskType: String,
         dueDate: String,
-        recordTitle: String
+        recordTitle: String,
+        syncCalendar: Boolean = true
     ): Pair<Long?, Int> {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         val shortFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -51,8 +58,8 @@ object SmartScheduleManager {
 
         val endMillis = startMillis + EVENT_DURATION_MILLIS
 
-        // 创建日历事件
-        val eventId = CalendarHelper.addEvent(
+        // 系统日历事件是"可选副作用"：关掉时不建，也不因为没建就不响闹钟
+        val eventId = if (!syncCalendar) null else CalendarHelper.addEvent(
             context,
             CalendarEvent(
                 title = taskContent,
@@ -63,8 +70,8 @@ object SmartScheduleManager {
             )
         )
 
-        // 创建提醒闹钟（取模确保不溢出）
-        val alarmId = ((taskId % (Int.MAX_VALUE - 10000)) + 10000).toInt()
+        // 创建提醒闹钟（与取消/开机恢复统一使用同一换算公式）
+        val alarmId = taskIdToAlarmId(taskId)
 
         when (taskType) {
             "daily" -> {
@@ -122,8 +129,10 @@ object SmartScheduleManager {
     }
 
     fun cancelAlarm(context: Context, taskId: Long, calendarEventId: Long? = null) {
-        val alarmId = (taskId + 10000).toInt()
-        AlarmScheduler.cancelTaskAlarm(context, alarmId)
+        // 两个 id 都要取消：BootReceiver 会为 daily 任务额外注册"明日提醒"，
+        // 只取消当日那个会让它变成僵尸闹钟，重启后还被再注册一次。
+        AlarmScheduler.cancelTaskAlarm(context, taskIdToAlarmId(taskId))
+        AlarmScheduler.cancelTaskAlarm(context, dailyNextDayAlarmId(taskId))
         calendarEventId?.let { CalendarHelper.deleteEvent(context, it) }
     }
 }

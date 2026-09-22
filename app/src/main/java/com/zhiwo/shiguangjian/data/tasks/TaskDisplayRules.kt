@@ -7,7 +7,11 @@ import java.time.LocalDateTime
 
 fun isTaskEffectivelyCompleted(task: TaskEntity, today: String = DateFormats.nowDate()): Boolean {
     if (task.isPermanentlyCompleted) return true
-    if (task.taskType == "daily") {
+    // 老列判据：每日型（含每周型）与留白必须按"当天完成的才算当天完成"，
+    // 否则周一勾一次，整周在日历页/记录卡片都显示已完成，而安排页显示未做
+    val isRecurring = task.kind == "daily" || task.kind == "blank" ||
+        task.taskType == "daily" || task.taskType == "weekly"
+    if (isRecurring) {
         return task.isCompleted && task.dailyCompletionDate == today
     }
     return task.isCompleted

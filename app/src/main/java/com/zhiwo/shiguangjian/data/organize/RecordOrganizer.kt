@@ -7,6 +7,7 @@ import com.zhiwo.shiguangjian.data.ai.DateFormats
 import com.zhiwo.shiguangjian.data.ai.resolveCategory
 import com.zhiwo.shiguangjian.data.db.entity.MemoryEntity
 import com.zhiwo.shiguangjian.data.db.entity.RecordEntity
+import com.zhiwo.shiguangjian.data.db.entity.GoalEntity
 import com.zhiwo.shiguangjian.data.db.entity.TaskEntity
 import com.zhiwo.shiguangjian.data.repository.MemoryRepository
 import com.zhiwo.shiguangjian.data.repository.RecordRepository
@@ -44,7 +45,7 @@ class RecordOrganizer(
                     taskRepo.updateTask(task.copy(recordId = primary.id))
                 }
                 completedTasksToCancel += tasks.filter { it.isCompleted }
-                recordRepo.deleteRecord(rec.id)
+                recordRepo.deleteRecordKeepingTasks(rec.id)
             }
             true
         }
@@ -80,7 +81,7 @@ class RecordOrganizer(
                     taskRepo.updateTask(task.copy(recordId = newRecordIds.first()))
                 }
             }
-            recordRepo.deleteRecord(sourceId)
+            recordRepo.deleteRecordKeepingTasks(sourceId)
             true
         }
     }
@@ -94,12 +95,13 @@ class RecordOrganizer(
                 MemoryEntity(
                     content = memoryContent,
                     source = "organize",
-                    createdAt = source.createdAt,
-                    updatedAt = now
+                    createdAt = now,                       // 写库时间；淘汰按它排序，用记录老日期会让新记忆第一个被删
+                    updatedAt = now,
+                    occurredAt = source.createdAt.take(10)
                 )
             )
             tasksToCancel += taskRepo.getTasksByRecordId(sourceId).first()
-            recordRepo.deleteRecord(sourceId)
+            recordRepo.deleteRecordKeepingTasks(sourceId)
             true
         }
         if (applied) {
@@ -121,7 +123,10 @@ class RecordOrganizer(
                         content = todoContent,
                         taskType = "once",
                         dueDate = "$today 09:00:00",
-                        createdAt = now
+                        createdAt = now,
+                        kind = "adhoc",
+                        scheduledDate = today,
+                        remindTime = "09:00"
                     )
                 )
             }
@@ -150,7 +155,19 @@ class RecordOrganizer(
                 sourceTasks.filter { !it.isCompleted }.forEach { task ->
                     taskRepo.updateTask(task.copy(recordId = primary.id, parentGoalId = primary.id))
                 }
-                recordRepo.deleteRecord(source.id)
+                recordRepo.deleteRecordKeepingTasks(source.id)
+            }
+            // "待办并为目标"现在产出一个真目标行，老的目标记录通过 recordId 溯源
+            val goalDao = app.database.goalDao()
+            if (goalDao.getActiveGoals().first().none { it.recordId == primary.id }) {
+                val goalId = goalDao.insert(
+                    GoalEntity(title = goalTitle, description = primary.summary, recordId = primary.id, createdAt = now)
+                )
+                val linked = taskRepo.getTasksByRecordId(primary.id).first() +
+                    taskRepo.getTasksByParentGoalId(primary.id).first()
+                for (task in linked.distinctBy { it.id }) {
+                    taskRepo.updateTask(task.copy(goalId = goalId))
+                }
             }
             true
         }

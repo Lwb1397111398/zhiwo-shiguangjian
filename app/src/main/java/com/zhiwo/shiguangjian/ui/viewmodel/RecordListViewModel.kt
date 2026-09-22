@@ -36,6 +36,7 @@ class RecordListViewModel(application: Application) : AndroidViewModel(applicati
         app.database.tagDao(), app.database.keyInfoDao()
     )
     private val taskRepo = TaskRepository(app.database.taskDao())
+    private val bridge = com.zhiwo.shiguangjian.data.repository.TaskWriteBridge(app.database)
     private val memoryRepo = MemoryRepository(app.database.memoryDao())
     private val settingsRepo = SettingsRepository(app.database.settingDao())
     private val secureSettingsRepo = SecureSettingsRepository(app)
@@ -151,12 +152,7 @@ class RecordListViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             try {
                 val task = taskRepo.getTaskById(taskId) ?: return@launch
-                val now = DateFormats.nowDate()
-                if (task.taskType == "daily") {
-                    taskRepo.updateTask(task.copy(isCompleted = true, completedAt = now, dailyCompletionDate = now))
-                } else {
-                    taskRepo.updateTask(task.copy(isCompleted = true, completedAt = now))
-                }
+                bridge.check(task, DateFormats.nowDate(), DateFormats.nowDateTimeIso())
                 task.recordId?.let { recordId -> checkAndMoveCompleted(recordId) }
                 // 取消对应的提醒闹钟
                 SmartScheduleManager.cancelAlarm(app, taskId, task.calendarEventId)
@@ -170,11 +166,7 @@ class RecordListViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             try {
                 val task = taskRepo.getTaskById(taskId) ?: return@launch
-                if (task.taskType == "daily") {
-                    taskRepo.updateTask(task.copy(isCompleted = false, completedAt = null, dailyCompletionDate = null))
-                } else {
-                    taskRepo.updateTask(task.copy(isCompleted = false, completedAt = null))
-                }
+                bridge.uncheck(task, DateFormats.nowDate())
             } catch (e: Throwable) {
                 Log.e("RecordListVM", "uncompleteTask failed", e)
             }
@@ -204,11 +196,8 @@ class RecordListViewModel(application: Application) : AndroidViewModel(applicati
             // 完成关联到此目标的待办任务
             val linkedTasks = taskRepo.getTasksByParentGoalId(goalRecordId).first()
             linkedTasks.forEach { task ->
-                if (task.taskType == "daily") {
-                    taskRepo.updateTask(task.copy(isCompleted = true, completedAt = now, dailyCompletionDate = now, isPermanentlyCompleted = true))
-                } else {
-                    taskRepo.updateTask(task.copy(isCompleted = true, completedAt = now))
-                }
+                bridge.check(task, now, DateFormats.nowDateTimeIso())
+                if (task.kind == "daily" || task.kind == "blank") bridge.archive(task)
             }
             // 完成记录自身的任务
             val recordTasks = taskRepo.getTasksByRecordId(goalRecordId).first()
@@ -225,6 +214,49 @@ class RecordListViewModel(application: Application) : AndroidViewModel(applicati
             (linkedTasks + recordTasks).forEach { SmartScheduleManager.cancelAlarm(app, it.id, it.calendarEventId) }
             // 移动记录到已完成
             recordRepo.updateRecord(goalRecord.copy(category = "completed"))
+            // 目标完成的事实同步给记忆（确定性入口，不靠 AI 脑补"达成"）
+            notifyGoalOutcome(goalRecord.id, goalRecord.title, achieved = true)
+        }
+    }
+
+    /**
+     * 放弃目标：记录移出目标列表（归入 completed），任务与闹钟一并收尾，
+     * 并把"已放弃"同步给记忆——推翻旧的"正在准备"类记忆。
+     */
+    fun abandonGoal(goalRecordId: Long) {
+        viewModelScope.launch {
+            try {
+                val goalRecord = recordRepo.getRecordById(goalRecordId) ?: return@launch
+                val now = DateFormats.nowDate()
+                val linkedTasks = taskRepo.getTasksByParentGoalId(goalRecordId).first()
+                val recordTasks = taskRepo.getTasksByRecordId(goalRecordId).first()
+                (linkedTasks + recordTasks).forEach { task ->
+                    if (!task.isCompleted) {
+                        taskRepo.updateTask(task.copy(isCompleted = true, completedAt = now))
+                    }
+                    SmartScheduleManager.cancelAlarm(app, task.id, task.calendarEventId)
+                }
+                recordRepo.updateRecord(goalRecord.copy(category = "completed"))
+                notifyGoalOutcome(goalRecord.id, goalRecord.title, achieved = false)
+            } catch (e: Throwable) {
+                Log.e("RecordListVM", "abandonGoal failed", e)
+            }
+        }
+    }
+
+    /** 用应用级作用域把目标结局同步给记忆对账，避免页面退出被取消 */
+    private fun notifyGoalOutcome(goalRecordId: Long, goalTitle: String, achieved: Boolean) {
+        val outcome = if (achieved) "已完成" else "已放弃（未达成）"
+        app.appScope.launch {
+            try {
+                app.memoryReconciler.reconcileAndApply(
+                    newContent = "目标「$goalTitle」$outcome，这是用户确认的事实",
+                    now = DateFormats.nowDateTimeIso(),
+                    sourceRecordId = goalRecordId
+                )
+            } catch (e: Throwable) {
+                Log.e("RecordListVM", "目标结局同步记忆失败（忽略）", e)
+            }
         }
     }
 
@@ -285,7 +317,7 @@ class RecordListViewModel(application: Application) : AndroidViewModel(applicati
                 // 删除前取消关联任务的闹钟
                 val tasks = taskRepo.getTasksByRecordId(id).first()
                 tasks.forEach { SmartScheduleManager.cancelAlarm(app, it.id, it.calendarEventId) }
-                recordRepo.deleteRecord(id)
+                recordRepo.deleteRecordKeepingTasks(id)
                 onSuccess?.invoke()
             } catch (e: Throwable) {
                 Log.e("RecordListVM", "删除记录失败", e)

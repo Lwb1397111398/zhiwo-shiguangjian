@@ -33,7 +33,8 @@ val navItems = listOf(
 fun BottomNavBar(
     currentRoute: String,
     onNavigate: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    pendingReviewBadge: Int = 0
 ) {
     NavigationBar(
         modifier = modifier.height(72.dp),
@@ -42,15 +43,27 @@ fun BottomNavBar(
     ) {
         navItems.forEach { item ->
             val selected = currentRoute == item.route
+            // 评价 Tab 角标：有待确认的记忆更正（记忆入口在评价页）
+            val badge = if (item.route == "review" && pendingReviewBadge > 0) pendingReviewBadge else null
             NavigationBarItem(
                 selected = selected,
                 onClick = { onNavigate(item.route) },
                 icon = {
-                    Icon(
-                        imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                        contentDescription = item.label,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    if (badge != null) {
+                        BadgedBox(badge = { Badge { Text("$badge") } }) {
+                            Icon(
+                                imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
+                                contentDescription = item.label,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    } else {
+                        Icon(
+                            imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
+                            contentDescription = item.label,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 },
                 label = {
                     Text(

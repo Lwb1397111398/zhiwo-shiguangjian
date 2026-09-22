@@ -98,12 +98,16 @@ class AiRepository {
     ) {
         try {
             val baseUrl = settingsRepo.getSetting("apiBaseUrl") ?: ""
-            val storedApiKey = secureSettingsRepo.getApiKey()
-            val legacyApiKey = settingsRepo.getSetting("apiKey") ?: ""
+            // Keystore 解密切 IO，避免主线程卡顿
+            val (storedApiKey, legacyApiKey) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                secureSettingsRepo.getApiKey() to (settingsRepo.getSetting("apiKey") ?: "")
+            }
             val apiKey = storedApiKey.ifBlank { legacyApiKey }
             if (storedApiKey.isBlank() && legacyApiKey.isNotBlank()) {
                 settingsRepo.deleteSetting("apiKey")
-                secureSettingsRepo.setApiKey(legacyApiKey)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    secureSettingsRepo.setApiKey(legacyApiKey)
+                }
             }
             val modelName = settingsRepo.getSetting("modelName") ?: ""
             configure(baseUrl, apiKey, modelName)
@@ -130,6 +134,42 @@ class AiRepository {
     }
 
     private suspend fun chat(messages: List<Pair<String, String>>, maxTokens: Int = 2000): String {
+        // 可重试错误（限流/服务端/网络抖动）指数退避最多 2 次：1s → 2s
+        var attempt = 0
+        while (true) {
+            try {
+                return chatOnce(messages, maxTokens)
+            } catch (e: Throwable) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                if (attempt < MAX_RETRIES && isRetryable(e)) {
+                    attempt++
+                    val backoffMs = 1000L shl attempt  // 2s, 4s
+                    logError("chat 第 $attempt 次重试（${e.message}），${backoffMs}ms 后重试")
+                    kotlinx.coroutines.delay(backoffMs)
+                } else {
+                    throw e
+                }
+            }
+        }
+    }
+
+    private fun isRetryable(e: Throwable): Boolean = isRetryableMessage(e.message)
+
+    internal companion object {
+        const val MAX_RETRIES = 2
+
+        /** 可重试判定（包内可见供单测）：限流/服务端/网络类瞬时错误 */
+        fun isRetryableMessage(message: String?): Boolean {
+            val msg = (message ?: "").lowercase()
+            return msg.contains("timeout") || msg.contains("timed out") || msg.contains("network") ||
+                msg.contains("connection") ||
+                msg.contains("429") || msg.contains("500") || msg.contains("502") ||
+                msg.contains("503") || msg.contains("504") || msg.contains("请求过于频繁") ||
+                msg.contains("服务器暂时不可用") || msg.contains("网络连接失败")
+        }
+    }
+
+    private suspend fun chatOnce(messages: List<Pair<String, String>>, maxTokens: Int = 2000): String {
         rateLimitedCall()
         val api = apiService
             ?: throw IllegalStateException("AI 服务未配置，请检查 API 地址格式是否正确（需包含 http:// 或 https://）")
@@ -202,6 +242,10 @@ class AiRepository {
     private fun parseJsonResponse(raw: String): JsonObject = AiJsonParser.parseObject(raw)
 
     private fun parseJsonArray(raw: String): JsonArray = AiJsonParser.parseArray(raw)
+
+    /** AI 调用/解析失败的统一口径：抛出，让界面明确知道"没有生成任何建议"，禁止静默兜底塞数据 */
+    private fun aiFailed(what: String, cause: Throwable): Exception =
+        Exception("AI $what 失败，未生成任何建议（${cause.message ?: "返回格式异常"}）")
 
     suspend fun testConnection(): Boolean {
         if (!isConfigured) throw Exception("请先配置 AI 接口（Base URL / API Key / Model 不能为空）")
@@ -347,6 +391,25 @@ class AiRepository {
         }
     }
 
+    // ========== 记忆对账 ==========
+    /**
+     * 用新信息比对现有记忆，让 AI 输出更正建议（supersede/revise）。
+     * 输出解析见 [com.zhiwo.shiguangjian.data.memory.MemoryReconciliation]。
+     */
+    suspend fun reconcileMemories(
+        newContent: String,
+        activeMemories: List<MemoryEntity>
+    ): String {
+        val memoriesText = activeMemories.joinToString("\n") { m ->
+            "${m.id}. ${m.content}"
+        }
+        val prompt = MEMORY_RECONCILE_PROMPT
+            .replace("{{current_time}}", nowFormatted())
+            .replace("{{new_content}}", newContent.take(2000))
+            .replace("{{active_memories}}", memoriesText.ifBlank { "暂无记忆" })
+        return chat(listOf("user" to prompt))
+    }
+
     // ========== 智能归并 ==========
     suspend fun consolidate(items: List<ConsolidateItem>): List<String> {
         val currentTime = nowFormatted()
@@ -360,8 +423,10 @@ class AiRepository {
             val result = chat(listOf("user" to prompt))
             parseJsonArray(result).map { it.asString }
         } catch (e: Throwable) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e("AiRepository", "consolidate error", e)
-            items.map { it.title }
+            // 失败绝不能把全部条目原样当"归并建议"灌进提案（一次网络抖动就会灌进整批记录标题）
+            throw aiFailed("归并", e)
         }
     }
 
@@ -384,14 +449,14 @@ class AiRepository {
             val parsed = parseJsonResponse(result)
             ClassifyResult(
                 memories = parsed.getAsJsonArray("memories")?.map { it.asString } ?: emptyList(),
-                cleanable = parsed.getAsJsonArray("cleanable")?.map { it.asString } ?: emptyList()
+                cleanable = AiJsonParser.parseCleanable(parsed.getAsJsonArray("cleanable"))
             )
         } catch (e: Throwable) {
             // 取消异常必须继续传播，否则会破坏协程取消
             if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e("AiRepository", "classify error", e)
             // 失败时绝不能把条目默认标为可清理（会导致误删），直接报错让界面提示
-            throw Exception("AI 分类失败，未对任何数据做更改（${e.message ?: "返回格式异常"}）")
+            throw aiFailed("分类", e)
         }
     }
 
@@ -413,12 +478,15 @@ class AiRepository {
             val result = chat(listOf("user" to prompt))
             val parsed = parseJsonResponse(result)
             SmartCleanResult(
-                shouldClean = parsed.getAsJsonArray("should_clean")?.map { it.asString } ?: emptyList(),
-                shouldKeep = parsed.getAsJsonArray("should_keep")?.map { it.asString } ?: emptyList()
+                shouldClean = AiJsonParser.parseCleanable(parsed.getAsJsonArray("should_clean")),
+                shouldKeep = AiJsonParser.parseCleanable(parsed.getAsJsonArray("should_keep"))
             )
         } catch (e: Throwable) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e("AiRepository", "smartClean error", e)
-            SmartCleanResult(emptyList(), items.map { it.text })
+            // 失败时绝不能把全部条目判为"应保留"灌成存记忆提案（旧兜底的真实后果：一次网络抖动
+            // 就把整批记录标题当记忆塞进库里，正是"整理后残存记忆"的来源之一）
+            throw aiFailed("清扫复审", e)
         }
     }
 

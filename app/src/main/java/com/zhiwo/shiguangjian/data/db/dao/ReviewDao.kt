@@ -12,6 +12,9 @@ interface ReviewDao {
     @Query("SELECT * FROM reviews WHERE type = :type ORDER BY date DESC")
     fun getReviewsByType(type: String): Flow<List<ReviewEntity>>
 
+    @Query("SELECT * FROM reviews WHERE id = :id LIMIT 1")
+    suspend fun getReviewById(id: Long): ReviewEntity?
+
     @Query("SELECT * FROM reviews WHERE date = :date AND type = :type LIMIT 1")
     suspend fun getReviewByDate(date: String, type: String): ReviewEntity?
 

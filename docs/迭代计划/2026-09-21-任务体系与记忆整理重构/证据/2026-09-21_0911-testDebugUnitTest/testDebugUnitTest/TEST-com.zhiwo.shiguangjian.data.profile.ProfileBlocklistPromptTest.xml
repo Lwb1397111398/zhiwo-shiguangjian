@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.profile.ProfileBlocklistPromptTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-09-21T01:12:13" hostname="文彬三号" time="0.016">
+  <properties/>
+  <testcase name="non empty inject keeps content at placeholder" classname="com.zhiwo.shiguangjian.data.profile.ProfileBlocklistPromptTest" time="0.003"/>
+  <testcase name="empty blocklist renders empty string" classname="com.zhiwo.shiguangjian.data.profile.ProfileBlocklistPromptTest" time="0.0"/>
+  <testcase name="more than 30 items keeps newest 30" classname="com.zhiwo.shiguangjian.data.profile.ProfileBlocklistPromptTest" time="0.011"/>
+  <testcase name="empty inject removes placeholder without leaving title or extra blank lines" classname="com.zhiwo.shiguangjian.data.profile.ProfileBlocklistPromptTest" time="0.0"/>
+  <testcase name="long item is clamped to 100 chars" classname="com.zhiwo.shiguangjian.data.profile.ProfileBlocklistPromptTest" time="0.001"/>
+  <testcase name="non empty contains title and items" classname="com.zhiwo.shiguangjian.data.profile.ProfileBlocklistPromptTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

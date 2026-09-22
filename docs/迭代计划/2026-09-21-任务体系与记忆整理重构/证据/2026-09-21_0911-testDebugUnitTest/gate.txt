@@ -1,0 +1,28 @@
+task=testDebugUnitTest  本地运行时间=2026-09-21 09:12
+--- 新鲜度：不是本次运行产生的 XML 数量（必须为 0）---
+0
+--- XML 内 timestamp（Gradle 写的是 UTC，别拿本地日期判）---
+timestamp="2026-09-21T01:12:12"
+timestamp="2026-09-21T01:12:13"
+--- 汇总 ---
+tests=162 skipped=0 failures=0 errors=0
+--- 类级用例数（与上一里程碑 diff，删除类必须在白名单里说明）---
+11 com.zhiwo.shiguangjian.data.profile.UserProfileEditorTest
+12 com.zhiwo.shiguangjian.data.memory.MemoryReconciliationTest
+12 com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionTest
+15 com.zhiwo.shiguangjian.data.profile.UserProfileAndMemoryExtractionTest
+2 com.zhiwo.shiguangjian.data.ai.DailyReviewTextEnhancerTest
+2 com.zhiwo.shiguangjian.data.diary.DiaryEditingTest
+2 com.zhiwo.shiguangjian.data.export.ExportDataBuilderTest
+24 com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest
+3 com.zhiwo.shiguangjian.data.ai.AiModelsTest
+3 com.zhiwo.shiguangjian.data.ai.AiRepositoryConfigTest
+3 com.zhiwo.shiguangjian.data.ai.AiRetryPolicyTest
+3 com.zhiwo.shiguangjian.data.profile.ApplyAiProfileUpdateTest
+3 com.zhiwo.shiguangjian.data.tasks.TaskDisplayRulesTest
+37 com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest
+4 com.zhiwo.shiguangjian.data.ai.AiJsonParserTest
+5 com.zhiwo.shiguangjian.data.profile.ProfileBlocklistTest
+6 com.zhiwo.shiguangjian.data.profile.ProfileBlocklistPromptTest
+7 com.zhiwo.shiguangjian.data.diary.HistoryCorrectionScannerTest
+8 com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionBlocklistTest

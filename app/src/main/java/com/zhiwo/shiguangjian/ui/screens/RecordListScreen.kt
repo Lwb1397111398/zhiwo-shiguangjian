@@ -3,8 +3,10 @@ package com.zhiwo.shiguangjian.ui.screens
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -56,6 +58,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 fun RecordListScreen(
     onRecordClick: (Long) -> Unit = {},
     onFabClick: () -> Unit = {},
+    onPlanClick: (Long) -> Unit = {},
+    onGoalClick: (Long) -> Unit = {},
     viewModel: RecordListViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -142,40 +146,13 @@ fun RecordListScreen(
             }
 
             if (selectedTab == 0) {
-                ScheduleTab(
-                    todayDueTodo = todayDueTodo,
-                    goalRecords = goalRecords,
-                    completedRecords = completedRecords,
-                    tasks = tasks,
-                    today = today,
-                    showCompleted = showCompleted,
-                    onToggleShowCompleted = { showCompleted = !showCompleted },
-                    fadingTaskIds = fadingTaskIds,
-                    completingRecordIds = completingRecordIds,
-                    onTaskToggle = { task ->
-                        if (viewModel.isTaskEffectivelyCompleted(task, today)) {
-                            viewModel.uncompleteTask(task.id)
-                        } else {
-                            viewModel.completeTask(task.id)
-                            coroutineScope.launch {
-                                if (task.taskType == "daily") {
-                                    fadingTaskIds = fadingTaskIds + task.id
-                                }
-                                val recordTasks = tasks.filter { t -> t.recordId == task.recordId }
-                                val allDone = recordTasks.all { t ->
-                                    if (t.id == task.id) true
-                                    else viewModel.isTaskEffectivelyCompleted(t, today)
-                                }
-                                if (allDone && recordTasks.isNotEmpty()) {
-                                    task.recordId?.let { completingRecordIds = completingRecordIds + it }
-                                }
-                            }
-                        }
-                    },
+                ScheduleScreen(
                     onRecordClick = onRecordClick,
-                    onCompleteGoal = { viewModel.completeGoal(it) }
+                    onPlanClick = onPlanClick,
+                    onGoalClick = onGoalClick
                 )
             }
+
 
             if (selectedTab == 1) {
                 AllRecordsTab(
@@ -241,7 +218,8 @@ private fun ScheduleTab(
     completingRecordIds: Set<Long>,
     onTaskToggle: (TaskEntity) -> Unit,
     onRecordClick: (Long) -> Unit,
-    onCompleteGoal: (Long) -> Unit
+    onCompleteGoal: (Long) -> Unit,
+    onAbandonGoal: (Long) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -274,7 +252,8 @@ private fun ScheduleTab(
                     record = record,
                     tasks = tasks.filter { t -> t.recordId == record.id },
                     onComplete = { onCompleteGoal(record.id) },
-                    onClick = { onRecordClick(record.id) }
+                    onClick = { onRecordClick(record.id) },
+                    onAbandon = { onAbandonGoal(record.id) }
                 )
             }
         }
@@ -630,16 +609,40 @@ fun ScheduleRecordItem(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun GoalRecordItem(
     record: RecordEntity, tasks: List<TaskEntity>,
-    onComplete: () -> Unit, onClick: () -> Unit
+    onComplete: () -> Unit, onClick: () -> Unit,
+    onAbandon: () -> Unit = {}
 ) {
+    var showAbandonDialog by remember { mutableStateOf(false) }
+
+    if (showAbandonDialog) {
+        AlertDialog(
+            onDismissRequest = { showAbandonDialog = false },
+            title = { Text("标记为已放弃") },
+            text = { Text("确定放弃目标「${record.title}」吗？\n\n关联任务会被收尾，相关记忆会更正为「已放弃」，不再产生提醒。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showAbandonDialog = false
+                    onAbandon()
+                }) { Text("放弃目标", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAbandonDialog = false }) { Text("取消") }
+            }
+        )
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 2.dp)
-            .clickable { onClick() },
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = { showAbandonDialog = true }
+            ),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -655,17 +658,29 @@ fun GoalRecordItem(
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Spacer(modifier = Modifier.height(6.dp))
-                OutlinedButton(
-                    onClick = onComplete,
-                    modifier = Modifier.height(36.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    border = ButtonDefaults.outlinedButtonBorder,
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Error)
-                ) {
-                    Icon(IconsDefault.Flag, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("完成", maxLines = 1)
+                Row {
+                    OutlinedButton(
+                        onClick = onComplete,
+                        modifier = Modifier.height(36.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        border = ButtonDefaults.outlinedButtonBorder,
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Error)
+                    ) {
+                        Icon(IconsDefault.Flag, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("完成", maxLines = 1)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    OutlinedButton(
+                        onClick = { showAbandonDialog = true },
+                        modifier = Modifier.height(36.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
+                    ) {
+                        Text("放弃", maxLines = 1)
+                    }
                 }
             }
         }

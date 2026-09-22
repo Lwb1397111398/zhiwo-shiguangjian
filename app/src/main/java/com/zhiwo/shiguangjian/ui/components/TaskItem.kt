@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zhiwo.shiguangjian.data.db.entity.TaskEntity
+import com.zhiwo.shiguangjian.data.tasks.isTaskEffectivelyCompleted
 import com.zhiwo.shiguangjian.ui.theme.*
 
 @Composable
@@ -31,7 +32,8 @@ fun TaskItem(
     showDate: Boolean = false,
     modifier: Modifier = Modifier,
     clickable: Boolean = true,
-    isEffectivelyCompleted: Boolean = task.isCompleted  // 允许外部覆盖"有效完成"状态
+    // 默认值也必须按"当天完成"判：否则补打卡到昨天会让记录卡片显示今天已完成
+    isEffectivelyCompleted: Boolean = isTaskEffectivelyCompleted(task)  // 允许外部覆盖"有效完成"状态
 ) {
     val backgroundColor by animateColorAsState(
         targetValue = if (isEffectivelyCompleted) Success.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),

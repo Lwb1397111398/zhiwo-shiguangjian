@@ -9,6 +9,10 @@ import com.zhiwo.shiguangjian.data.db.entity.ReviewEntity
 import com.zhiwo.shiguangjian.data.db.entity.SettingEntity
 import com.zhiwo.shiguangjian.data.db.entity.TagEntity
 import com.zhiwo.shiguangjian.data.db.entity.TaskEntity
+import com.zhiwo.shiguangjian.data.db.entity.GoalEntity
+import com.zhiwo.shiguangjian.data.db.entity.PlanEntity
+import com.zhiwo.shiguangjian.data.db.entity.TaskOccurrenceEntity
+import com.zhiwo.shiguangjian.data.db.entity.DayOverrideEntity
 
 data class ExportData(
     val version: Int,
@@ -21,11 +25,23 @@ data class ExportData(
     val reviews: List<ReviewEntity>,
     val memories: List<MemoryEntity>,
     val diaries: List<DiaryEntity>,
-    val settings: List<SettingEntity>
+    val settings: List<SettingEntity>,
+    val goals: List<GoalEntity> = emptyList(),
+    val plans: List<PlanEntity> = emptyList(),
+    val taskOccurrences: List<TaskOccurrenceEntity> = emptyList(),
+    val dayOverrides: List<DayOverrideEntity> = emptyList()
 )
 
 object ExportDataBuilder {
+    // 精确敏感键 + 敏感前缀（防止未来新增键遗漏；apiBaseUrl 等非凭证键正常导出）
     private val SENSITIVE_KEYS = setOf("apiKey", "apiSecret", "token")
+    private val SENSITIVE_PREFIXES = listOf("password", "secret", "token")
+
+    private fun isSensitive(key: String): Boolean {
+        if (key in SENSITIVE_KEYS) return true
+        val lowered = key.lowercase()
+        return SENSITIVE_PREFIXES.any { lowered.startsWith(it) }
+    }
 
     fun build(
         exportedAt: String,
@@ -37,9 +53,13 @@ object ExportDataBuilder {
         reviews: List<ReviewEntity>,
         memories: List<MemoryEntity>,
         diaries: List<DiaryEntity>,
-        settings: List<SettingEntity>
+        settings: List<SettingEntity>,
+        goals: List<GoalEntity> = emptyList(),
+        plans: List<PlanEntity> = emptyList(),
+        taskOccurrences: List<TaskOccurrenceEntity> = emptyList(),
+        dayOverrides: List<DayOverrideEntity> = emptyList()
     ): ExportData = ExportData(
-        version = 2,
+        version = 3,
         exportedAt = exportedAt,
         records = records,
         tasks = tasks,
@@ -49,6 +69,10 @@ object ExportDataBuilder {
         reviews = reviews,
         memories = memories,
         diaries = diaries,
-        settings = settings.filterNot { it.key in SENSITIVE_KEYS }
+        settings = settings.filterNot { isSensitive(it.key) },
+        goals = goals,
+        plans = plans,
+        taskOccurrences = taskOccurrences,
+        dayOverrides = dayOverrides
     )
 }

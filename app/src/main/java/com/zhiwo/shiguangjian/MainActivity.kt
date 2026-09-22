@@ -29,6 +29,7 @@ import com.zhiwo.shiguangjian.ui.screens.*
 import com.zhiwo.shiguangjian.ui.theme.ZhiwoTheme
 import com.zhiwo.shiguangjian.ui.viewmodel.SpecialDateViewModel
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -53,8 +54,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         requestPermissions()
 
-        // 设置闹钟
-        AlarmScheduler.scheduleAllAlarms(this)
+        // 设置闹钟（固定提醒受"智能提醒"开关控制）
+        (application as ZhiwoApplication).appScope.launch {
+            AlarmScheduler.syncFixedAlarms(this@MainActivity)
+        }
 
         setContent {
             val app = application as ZhiwoApplication
@@ -95,20 +98,29 @@ fun MainApp() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: "records"
 
+    val application = androidx.compose.ui.platform.LocalContext.current.applicationContext as ZhiwoApplication
+
     // 每日揭历：每天第一次打开应用时展示
     val specialDateViewModel: SpecialDateViewModel = viewModel()
     val showGreeting by specialDateViewModel.showGreeting.collectAsState()
     val greetingInfo by specialDateViewModel.greetingInfo.collectAsState()
 
-    // 不显示底部导航栏的路由
-    val hideBottomBarRoutes = listOf(
-        "record_detail/{id}", "input", "organize", "diary", "special_dates", "user_profile"
+    // 不显示底部导航栏的路由前缀：带参数的路由拿 destination.route 比对不上，先掐掉参数与占位符再判前缀
+    val hideBottomBarPrefixes = listOf(
+        "record_detail", "input", "organize", "diary", "special_dates", "user_profile",
+        "goal_detail", "plan_detail", "goal_edit", "plan_edit", "superseded_memories"
     )
+    val routeBase = currentRoute.substringBefore("?").substringBefore("/{")
+    val hideBottomBar = hideBottomBarPrefixes.any { routeBase == it || routeBase.startsWith("$it/") }
+
+    // 待确认记忆更正数：评价 Tab 角标（记忆入口在评价页，保证 under_review 可见性）
+    val pendingCorrections by application.memoryReconciler.observePending()
+        .collectAsState(initial = emptyList())
 
     Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         bottomBar = {
-            if (currentRoute !in hideBottomBarRoutes && !currentRoute.startsWith("record_detail")) {
+            if (!hideBottomBar) {
                 BottomNavBar(
                     currentRoute = currentRoute,
                     onNavigate = { route ->
@@ -119,7 +131,8 @@ fun MainApp() {
                                 restoreState = true
                             }
                         }
-                    }
+                    },
+                    pendingReviewBadge = pendingCorrections.size
                 )
             }
         },
@@ -161,7 +174,9 @@ fun MainApp() {
                             launchSingleTop = true
                             restoreState = true
                         }
-                    }
+                    },
+                    onPlanClick = { planId -> navController.navigate("plan_detail/$planId") },
+                    onGoalClick = { goalId -> navController.navigate("goal_detail/$goalId") }
                 )
             }
 
@@ -213,7 +228,19 @@ fun MainApp() {
                         navController.navigate("review") {
                             launchSingleTop = true
                         }
+                    },
+                    onNavigateToSuperseded = {
+                        navController.navigate("superseded_memories") {
+                            launchSingleTop = true
+                        }
                     }
+                )
+            }
+
+            // 已更正的记忆：恢复 / 彻底删除 / 清空（记忆页只留一行入口，不平铺列表）
+            composable("superseded_memories") {
+                SupersededMemoriesScreen(
+                    onBack = { navController.popBackStack() }
                 )
             }
 
@@ -261,6 +288,58 @@ fun MainApp() {
 
             composable("special_dates") {
                 SpecialDatesScreen(
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                "goal_detail/{goalId}",
+                arguments = listOf(navArgument("goalId") { type = NavType.LongType })
+            ) { backStackEntry ->
+                GoalDetailScreen(
+                    goalId = backStackEntry.arguments?.getLong("goalId") ?: 0L,
+                    onBack = { navController.popBackStack() },
+                    onPlanClick = { planId -> navController.navigate("plan_detail/$planId") },
+                    onEditGoal = { goalId -> navController.navigate("goal_edit?goalId=$goalId") },
+                    onAddPlan = { goalId -> navController.navigate("plan_edit?planId=0&goalId=$goalId") }
+                )
+            }
+
+            composable(
+                "plan_detail/{planId}",
+                arguments = listOf(navArgument("planId") { type = NavType.LongType })
+            ) { backStackEntry ->
+                PlanDetailScreen(
+                    planId = backStackEntry.arguments?.getLong("planId") ?: 0L,
+                    onBack = { navController.popBackStack() },
+                    onEditPlan = { planId, goalId ->
+                        navController.navigate("plan_edit?planId=$planId&goalId=$goalId")
+                    }
+                )
+            }
+
+            composable(
+                "goal_edit?goalId={goalId}",
+                arguments = listOf(
+                    navArgument("goalId") { type = NavType.LongType; defaultValue = 0L }
+                )
+            ) { backStackEntry ->
+                GoalEditScreen(
+                    goalId = backStackEntry.arguments?.getLong("goalId") ?: 0L,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                "plan_edit?planId={planId}&goalId={goalId}",
+                arguments = listOf(
+                    navArgument("planId") { type = NavType.LongType; defaultValue = 0L },
+                    navArgument("goalId") { type = NavType.LongType; defaultValue = 0L }
+                )
+            ) { backStackEntry ->
+                PlanEditScreen(
+                    planId = backStackEntry.arguments?.getLong("planId") ?: 0L,
+                    goalId = backStackEntry.arguments?.getLong("goalId") ?: 0L,
                     onBack = { navController.popBackStack() }
                 )
             }

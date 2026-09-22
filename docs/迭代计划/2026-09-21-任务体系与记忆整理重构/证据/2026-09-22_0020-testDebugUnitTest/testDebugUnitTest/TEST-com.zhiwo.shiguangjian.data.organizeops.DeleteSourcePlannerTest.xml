@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.organizeops.DeleteSourcePlannerTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-09-21T16:23:13" hostname="文彬三号" time="0.043">
+  <properties/>
+  <testcase name="MFDP06_待清理列表为空时一条提案都不生成" classname="com.zhiwo.shiguangjian.data.organizeops.DeleteSourcePlannerTest" time="0.016"/>
+  <testcase name="MFDP02_一条提案可覆盖多个序号但不越界" classname="com.zhiwo.shiguangjian.data.organizeops.DeleteSourcePlannerTest" time="0.011"/>
+  <testcase name="MFDP04_匹配不上就不生成提案绝不退化成全删" classname="com.zhiwo.shiguangjian.data.organizeops.DeleteSourcePlannerTest" time="0.004"/>
+  <testcase name="MFDP05_重复序号去重且记录评价分桶" classname="com.zhiwo.shiguangjian.data.organizeops.DeleteSourcePlannerTest" time="0.004"/>
+  <testcase name="MFDP03_没有序号时按归一化文本匹配" classname="com.zhiwo.shiguangjian.data.organizeops.DeleteSourcePlannerTest" time="0.003"/>
+  <testcase name="MFDP01_按序号只绑定自己那一组" classname="com.zhiwo.shiguangjian.data.organizeops.DeleteSourcePlannerTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

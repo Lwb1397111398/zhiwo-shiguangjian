@@ -33,6 +33,7 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
         app.database.tagDao(), app.database.keyInfoDao()
     )
     private val taskRepo = TaskRepository(app.database.taskDao())
+    private val snapshotReader = com.zhiwo.shiguangjian.data.tasks.TaskSnapshotReader(app.database)
     private val settingsRepo = SettingsRepository(app.database.settingDao())
     private val secureSettingsRepo = SecureSettingsRepository(app)
     private val aiRepo get() = app.aiRepo
@@ -83,19 +84,11 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
                 val todayRecordsText = todayRecords.joinToString("\n") { "· ${it.title}: ${it.content.take(80)}" }
 
                 // 今日任务
-                val todayTasks = allTasks.filter { task ->
-                    val displayDate = when (task.taskType) {
-                        "daily", "weekly", "goal" -> today
-                        else -> task.dueDate.take(10)
-                    }
-                    displayDate == today
-                }
-                val taskSummary = todayTasks.joinToString("\n") { task ->
-                    val status = if (task.isCompleted) "✓" else "○"
-                    "$status ${task.content}"
-                }
+                val taskSummary = snapshotReader.summaryFor(today)
 
-                val relatedMemories = memories.take(5).joinToString("\n") { "· ${it.content}" }
+                // 只注入生效中的记忆（superseded 的视为不存在）
+                val activeMemories = memories.filter { it.status == "active" }
+                val relatedMemories = activeMemories.take(5).joinToString("\n") { "· ${it.content}" }
 
                 // 加载已有画像，注入评价（新画像从下次开始用）
                 val profile = settingsRepo.getUserProfile()
@@ -115,7 +108,11 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
                         date = today,
                         content = reviewContent,
                         message = userInput,
-                        createdAt = DateFormats.nowDateTimeIso()
+                        createdAt = DateFormats.nowDateTimeIso(),
+                        // 数据契约：记录生成依据，供历史重生成与溯源
+                        sourceRecordIds = todayRecords.map { it.id }.toString(),
+                        generationVersion = 1,
+                        isUserEdited = false
                     )
                 )
 
@@ -135,7 +132,11 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
                                     date = today,
                                     content = diaryResult.content,
                                     mood = diaryResult.mood,
-                                    createdAt = DateFormats.nowDateTimeIso()
+                                    createdAt = DateFormats.nowDateTimeIso(),
+                                    // 数据契约：记录生成依据，供后续"依据新事实重新生成"与编辑保护判断
+                                    sourceRecordIds = todayRecords.map { it.id }.toString(),
+                                    generationVersion = 1,
+                                    isUserEdited = false
                                 )
                             )
                         }
@@ -176,7 +177,9 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
                                     content = memoryContent,
                                     source = "review",
                                     createdAt = now,
-                                    updatedAt = now
+                                    updatedAt = now,
+                                    // 记忆讲的"哪天发生的事"与"什么时候写进库"必须分开，否则排序与上限淘汰都会认错
+                                    occurredAt = "${today}T00:00:00.000Z"
                                 )
                             )
                         }
@@ -184,6 +187,23 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
                     }
                 } catch (e: Throwable) {
                     Log.e("ReviewViewModel", "保存新记忆失败，不影响评价", e)
+                }
+
+                // 记忆对账：今日内容若推翻了旧记忆（如"准备法考"被"忘记报名"推翻），
+                // 自动停用被取代的旧记忆；中低置信建议进记忆页待确认队列
+                try {
+                    val reconcileContent = todayRecordsText + "\n" + userInput
+                    if (reconcileContent.isNotBlank() && activeMemories.isNotEmpty()) {
+                        val applied = app.memoryReconciler.reconcileAndApply(
+                            newContent = reconcileContent,
+                            now = DateFormats.nowDateTimeIso()
+                        )
+                        if (applied > 0) {
+                            Log.i("ReviewViewModel", "记忆对账：自动更正 $applied 条")
+                        }
+                    }
+                } catch (e: Throwable) {
+                    Log.e("ReviewViewModel", "记忆对账失败，不影响评价", e)
                 }
 
                 // 保存画像（独立 try-catch）：每次实时读取 flag + blocklist
@@ -215,6 +235,61 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /**
+     * 历史每日评价一键重生成：按当前 active 记忆 + 该日期记录/任务重写内容，
+     * 复用原评价保存的用户感受（message）。isUserEdited=true 拒绝覆盖。
+     */
+    fun regenerateDailyReview(reviewId: Long, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val review = reviews.value.find { it.id == reviewId }
+                    ?: reviewRepo.getReviewById(reviewId)
+                    ?: run { onResult(false, "原评价已不存在"); return@launch }
+                if (review.type != "daily") { onResult(false, "周报暂不支持重生成"); return@launch }
+                if (review.isUserEdited) { onResult(false, "这条评价已被手动编辑过，不做覆盖"); return@launch }
+
+                refreshAiConfig()
+                if (!aiRepo.isConfigured) { onResult(false, "请先配置 AI 接口"); return@launch }
+
+                val date = review.date
+                val allRecords = recordRepo.getAllRecords().first()
+                val dayRecords = allRecords.filter { it.createdAt.contains(date) }
+                val todayRecordsText = dayRecords.joinToString("\n") { "· ${it.title}: ${it.content.take(80)}" }
+
+                val taskSummary = snapshotReader.summaryFor(date)
+
+                val relatedMemories = memoryRepo.getAllMemories().first()
+                    .filter { it.status == "active" }
+                    .take(5).joinToString("\n") { "· ${it.content}" }
+
+                val profile = settingsRepo.getUserProfile()
+                val profileSummary = UserProfileCodec.toPromptSummary(profile)
+
+                val newContent = aiRepo.generateDailyReview(
+                    taskSummary = taskSummary.ifBlank { "当日暂无任务" },
+                    todayRecords = todayRecordsText.ifBlank { "当日暂无记录" },
+                    userInput = review.message,  // 复用用户当天的感受输入
+                    relatedMemories = relatedMemories.ifBlank { "暂无记忆" },
+                    userProfileSummary = profileSummary
+                )
+
+                reviewRepo.updateReview(
+                    review.copy(
+                        content = newContent,
+                        sourceRecordIds = dayRecords.map { it.id }.toString(),
+                        generationVersion = review.generationVersion + 1,
+                        isUserEdited = false
+                    )
+                )
+                loadReviews()
+                onResult(true, "已重新生成（第 ${review.generationVersion + 1} 版）")
+            } catch (e: Throwable) {
+                Log.e("ReviewViewModel", "重生成评价失败", e)
+                onResult(false, "重生成失败：${e.message ?: "未知错误"}")
+            }
+        }
+    }
+
     fun generateWeeklyReview(onComplete: (String?, String?) -> Unit) {
         viewModelScope.launch {
             try {
@@ -225,7 +300,7 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 val allRecords = recordRepo.getAllRecords().first()
                 val allTasks = taskRepo.getAllTasks().first()
-                val memories = memoryRepo.getAllMemories().first()
+                val memories = memoryRepo.getAllMemories().first().filter { it.status == "active" }
                 val relatedMemories = memories.take(5).joinToString("\n") { "· ${it.content}" }
 
                 // 计算本周范围（周一到周日）
@@ -235,17 +310,8 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
                 val weekEnd = today.plusDays(mondayOffset.toLong() + 6).format(DateFormats.DATE)
 
                 // 本周完成率（包含本周到期的一次性任务 + 所有持续性任务）
-                val weekTasks = allTasks.filter { t ->
-                    when (t.taskType) {
-                        "daily", "weekly", "goal" -> true
-                        else -> {
-                            val d = t.dueDate.take(10)
-                            d >= weekStart && d <= weekEnd
-                        }
-                    }
-                }
-                val completedCount = weekTasks.count { it.isCompleted }
-                val totalCount = weekTasks.size
+                val weekDays = (0L until 7L).map { weekStart.let { d -> java.time.LocalDate.parse(d).plusDays(it).toString() } }
+                val (totalCount, completedCount) = snapshotReader.weekProgress(weekDays)
                 val completionRate = if (totalCount > 0)
                     "已完成 $completedCount / $totalCount（${(completedCount * 100 / totalCount)}%）" else "本周暂无任务"
 

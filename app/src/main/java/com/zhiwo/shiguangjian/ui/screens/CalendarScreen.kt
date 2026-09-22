@@ -20,8 +20,7 @@ import com.zhiwo.shiguangjian.ui.components.CalendarGrid
 import com.zhiwo.shiguangjian.ui.components.RecordCard
 import com.zhiwo.shiguangjian.ui.components.TaskItem
 import com.zhiwo.shiguangjian.data.ai.DateFormats
-import com.zhiwo.shiguangjian.data.tasks.getTaskDisplayDate
-import com.zhiwo.shiguangjian.data.tasks.isTaskEffectivelyCompleted
+import com.zhiwo.shiguangjian.data.tasks.EntryState
 import com.zhiwo.shiguangjian.ui.viewmodel.CalendarViewModel
 
 @Composable
@@ -31,32 +30,21 @@ fun CalendarScreen(
 ) {
     val tasks by viewModel.tasks.collectAsState()
     val records by viewModel.records.collectAsState()
+    var markingDate by remember { mutableStateOf<String?>(null) }
     var selectedDate by remember {
         mutableStateOf(
             DateFormats.nowDate()
         )
     }
 
-    val dateTasks by remember(tasks, selectedDate) {
-        derivedStateOf {
-            tasks.filter { task ->
-                if (task.isPermanentlyCompleted) return@filter false
-                val displayDate = getTaskDisplayDate(task)
-                displayDate == selectedDate && !isTaskEffectivelyCompleted(task)
-            }
-        }
+    val occurrences by viewModel.occurrences.collectAsState()
+    val overrides by viewModel.overrides.collectAsState()
+    // 与安排页同一个引擎：同一天在两个页面看到的集合必然一致
+    val dayPlan by remember(tasks, occurrences, overrides, selectedDate) {
+        derivedStateOf { viewModel.dayPlan(selectedDate) }
     }
-
-    val overdueTasks by remember(tasks, selectedDate) {
-        derivedStateOf {
-            tasks.filter { task ->
-                if (task.isPermanentlyCompleted) return@filter false
-                !isTaskEffectivelyCompleted(task) &&
-                task.taskType != "daily" && task.taskType != "weekly" &&
-                task.dueDate.isNotBlank() && task.dueDate.take(10) < selectedDate
-            }
-        }
-    }
+    val dateTasks = dayPlan.planned
+    val overdueTasks = dayPlan.overdue + dayPlan.missed
 
     val dateRecords by remember(records, selectedDate) {
         derivedStateOf { records.filter { it.createdAt.startsWith(selectedDate) } }
@@ -72,7 +60,10 @@ fun CalendarScreen(
             CalendarGrid(
                 tasks = tasks,
                 selectedDate = selectedDate,
-                onSelectDate = { selectedDate = it }
+                onSelectDate = { selectedDate = it },
+                plannedCountOf = { viewModel.plannedCount(it) },
+                dayLabel = { viewModel.dayLabel(it) },
+                onLongPressDate = { markingDate = it }
             )
         }
 
@@ -94,14 +85,14 @@ fun CalendarScreen(
                     Text("过期任务", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Medium)
                 }
             }
-            items(overdueTasks, key = { "overdue-${it.id}" }) { task ->
+            items(overdueTasks, key = { "overdue-" + it.task.id + "-" + it.date }) { entry ->
                 TaskItem(
-                    task = task,
-                    onComplete = { viewModel.completeTask(task.id) },
-                    onUncomplete = { viewModel.uncompleteTask(task.id) },
-                    onPermanentlyComplete = { viewModel.permanentlyCompleteTask(task.id) },
+                    task = entry.task,
+                    onComplete = { viewModel.completeTask(entry.task.id, selectedDate) },
+                    onUncomplete = { viewModel.uncompleteTask(entry.task.id, selectedDate) },
+                    onPermanentlyComplete = { viewModel.permanentlyCompleteTask(entry.task.id) },
                     showDate = true,
-                    isEffectivelyCompleted = isTaskEffectivelyCompleted(task)
+                    isEffectivelyCompleted = entry.state == EntryState.DONE
                 )
             }
         }
@@ -117,13 +108,13 @@ fun CalendarScreen(
                     modifier = Modifier.padding(start = 16.dp, top = 16.dp)
                 )
             }
-            items(dateTasks, key = { "task-${it.id}" }) { task ->
+            items(dateTasks, key = { "task-" + it.task.id }) { entry ->
                 TaskItem(
-                    task = task,
-                    onComplete = { viewModel.completeTask(task.id) },
-                    onUncomplete = { viewModel.uncompleteTask(task.id) },
-                    onPermanentlyComplete = { viewModel.permanentlyCompleteTask(task.id) },
-                    isEffectivelyCompleted = isTaskEffectivelyCompleted(task)
+                    task = entry.task,
+                    onComplete = { viewModel.completeTask(entry.task.id, selectedDate) },
+                    onUncomplete = { viewModel.uncompleteTask(entry.task.id, selectedDate) },
+                    onPermanentlyComplete = { viewModel.permanentlyCompleteTask(entry.task.id) },
+                    isEffectivelyCompleted = entry.state == EntryState.DONE
                 )
             }
         }
@@ -163,4 +154,28 @@ fun CalendarScreen(
             }
         }
     }
+
+    // 长按日历上的某天 → 手动标「班 / 休」
+    val marking = markingDate
+        if (marking != null) {
+            val date = marking
+            AlertDialog(
+                onDismissRequest = { markingDate = null },
+                title = { Text("$date 算哪天") },
+                text = {
+                    Column {
+                        Text("标成「工作日」或「休息日」后，带「只在工作日 / 只在休息日」的任务会按你标的这天安排。")
+                        Spacer(Modifier.height(6.dp))
+                        Text("恢复默认则按法定节假日与周末判定。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                },
+                confirmButton = { TextButton(onClick = { viewModel.setDayType(date, "workday"); markingDate = null }) { Text("工作日") } },
+                dismissButton = {
+                    Row {
+                        TextButton(onClick = { viewModel.setDayType(date, "holiday") ; markingDate = null }) { Text("休息日") }
+                        TextButton(onClick = { viewModel.setDayType(date, null); markingDate = null }) { Text("恢复默认") }
+                    }
+                }
+            )
+        }
 }

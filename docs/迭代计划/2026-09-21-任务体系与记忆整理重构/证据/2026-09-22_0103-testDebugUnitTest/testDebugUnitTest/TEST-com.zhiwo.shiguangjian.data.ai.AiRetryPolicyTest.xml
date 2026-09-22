@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.ai.AiRetryPolicyTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-09-21T17:05:16" hostname="文彬三号" time="0.003">
+  <properties/>
+  <testcase name="client errors are not retryable" classname="com.zhiwo.shiguangjian.data.ai.AiRetryPolicyTest" time="0.001"/>
+  <testcase name="transient server and network errors are retryable" classname="com.zhiwo.shiguangjian.data.ai.AiRetryPolicyTest" time="0.001"/>
+  <testcase name="retry budget is two" classname="com.zhiwo.shiguangjian.data.ai.AiRetryPolicyTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -2,6 +2,8 @@ package com.zhiwo.shiguangjian.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -27,12 +29,21 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+private fun legacyDueDates(tasks: List<TaskEntity>): Set<String> =
+    tasks.mapNotNull { it.dueDate.take(10).ifBlank { null } }.toSet()
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CalendarGrid(
     tasks: List<TaskEntity>,
     selectedDate: String,
     onSelectDate: (String) -> Unit,
     onMonthChange: (Int, Int) -> Unit = { _, _ -> },
+    /** 这天有没有排事——由排期引擎给，组件不再自己解析 dueDate（历史上这里是一套独立的判断，与安排页对不上） */
+    plannedCountOf: (String) -> Int = { if (it in legacyDueDates(tasks)) 1 else 0 },
+    /** 返回"班"/"休"给手动标记过的日子做角标 */
+    dayLabel: (String) -> String? = { null },
+    onLongPressDate: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val calendar = remember { Calendar.getInstance() }
@@ -53,21 +64,6 @@ fun CalendarGrid(
         (cal.get(Calendar.DAY_OF_WEEK) + 5) % 7 // 周一为0
     }
 
-    val taskDates = remember(tasks) {
-        tasks.mapNotNull { task ->
-            if (task.dueDate.isBlank()) return@mapNotNull null
-            try {
-                val date = try {
-                    SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).parse(task.dueDate)
-                } catch (_: Exception) {
-                    SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(task.dueDate)
-                }
-                date?.let { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(it) }
-            } catch (_: Exception) {
-                task.dueDate.take(10)
-            }
-        }.toSet()
-    }
 
     Column(
         modifier = modifier
@@ -145,7 +141,9 @@ fun CalendarGrid(
                             currentYear, currentMonth + 1, day
                         )
                         val isSelected = dateStr == selectedDate
-                        val hasTask = dateStr in taskDates
+                        val planned = plannedCountOf(dateStr)
+                        val hasTask = planned > 0
+                        val overrideLabel = dayLabel(dateStr)
                         val isToday = dateStr == String.format(
                             "%04d-%02d-%02d",
                             Calendar.getInstance().get(Calendar.YEAR),
@@ -166,10 +164,16 @@ fun CalendarGrid(
                                         else -> androidx.compose.ui.graphics.Color.Transparent
                                     }
                                 )
-                                .clickable { onSelectDate(dateStr) },
+                                .combinedClickable(
+                                    onClick = { onSelectDate(dateStr) },
+                                    onLongClick = { onLongPressDate(dateStr) }
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                if (overrideLabel != null) {
+                                    Text(overrideLabel, fontSize = 9.sp, color = Warning)
+                                }
                                 Text(
                                     text = "$day",
                                     fontSize = 14.sp,

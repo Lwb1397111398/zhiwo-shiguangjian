@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.export.ExportDataBuilderTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-09-21T16:26:14" hostname="文彬三号" time="0.018">
+  <properties/>
+  <testcase name="build includes all user data groups" classname="com.zhiwo.shiguangjian.data.export.ExportDataBuilderTest" time="0.016"/>
+  <testcase name="build excludes legacy api key from settings" classname="com.zhiwo.shiguangjian.data.export.ExportDataBuilderTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

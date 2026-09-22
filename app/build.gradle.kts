@@ -44,6 +44,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
@@ -59,6 +60,12 @@ android {
     lint {
         abortOnError = true
     }
+}
+
+// Room 把每张表的建表结构导出到 app/schemas/<全类名>/<version>.json，作为"实体与迁移 SQL 是否一致"
+// 的离线对账凭据（本机无模拟器，这是唯一能证伪迁移正确性的手段）
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {

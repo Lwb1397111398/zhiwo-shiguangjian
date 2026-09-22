@@ -151,7 +151,28 @@ fun ReviewScreen(
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text(review.date, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(review.date, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(modifier = Modifier.weight(1f))
+                                if (review.isUserEdited) {
+                                    Text("已编辑", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                                } else if (review.generationVersion > 1) {
+                                    Text("v${review.generationVersion}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                                }
+                                TextButton(
+                                    onClick = {
+                                        if (!isConfigured) {
+                                            Toast.makeText(context, "请先配置AI接口", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(context, "按最新记忆重新生成中...", Toast.LENGTH_SHORT).show()
+                                            viewModel.regenerateDailyReview(review.id) { ok, msg ->
+                                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 8.dp)
+                                ) { Text("重新生成", fontSize = 11.sp) }
+                            }
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(mainText, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface, lineHeight = 22.sp)
                             if (blessing.isNotBlank()) {

@@ -13,17 +13,26 @@ import javax.crypto.spec.GCMParameterSpec
 class SecureSettingsRepository(context: Context) {
     private val preferences = context.applicationContext.getSharedPreferences("secure_settings", Context.MODE_PRIVATE)
 
+    // 内存缓存：避免每次配置刷新都在调用线程做 Keystore 解密
+    @Volatile
+    private var cachedApiKey: String? = null
+
     fun getApiKey(): String {
+        cachedApiKey?.let { return it }
         val encrypted = preferences.getString(KEY_API_KEY, null) ?: return ""
-        return runCatching { decrypt(encrypted) }.getOrDefault("")
+        val decrypted = runCatching { decrypt(encrypted) }.getOrDefault("")
+        cachedApiKey = decrypted
+        return decrypted
     }
 
     fun setApiKey(value: String) {
         preferences.edit().putString(KEY_API_KEY, encrypt(value)).apply()
+        cachedApiKey = value
     }
 
     fun clearApiKey() {
         preferences.edit().remove(KEY_API_KEY).apply()
+        cachedApiKey = null
     }
 
     private fun encrypt(value: String): String {

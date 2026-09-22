@@ -18,13 +18,7 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
             Log.d("BootReceiver", "开机完成，重新设置闹钟")
-            try {
-                // 恢复固定闹钟
-                AlarmScheduler.scheduleAllAlarms(context)
-            } catch (e: Exception) {
-                Log.e("BootReceiver", "开机重新设置固定闹钟失败: ${e.message}", e)
-            }
-            // 恢复任务提醒闹钟
+            // 固定闹钟恢复（受智能提醒开关控制，读设置需协程）+ 任务闹钟恢复
             val pendingResult = goAsync()
             restoreTaskAlarms(context.applicationContext, pendingResult)
         }
@@ -35,6 +29,12 @@ class BootReceiver : BroadcastReceiver() {
         this.scope = scope
         scope.launch {
             try {
+                // 恢复固定闹钟（受智能提醒开关控制）
+                try {
+                    AlarmScheduler.syncFixedAlarms(context)
+                } catch (e: Exception) {
+                    Log.e("BootReceiver", "开机重新设置固定闹钟失败: ${e.message}", e)
+                }
                 val app = context.applicationContext as? ZhiwoApplication ?: return@launch
                 val taskDao = app.database.taskDao()
                 // 获取所有未完成的任务
@@ -47,7 +47,7 @@ class BootReceiver : BroadcastReceiver() {
                     val startMillis = parseDueDate(task.dueDate) ?: continue
                     // 跳过已过期超过 1 小时的任务
                     if (startMillis < now - 3600_000) continue
-                    val alarmId = (task.id + 10000).toInt()
+                    val alarmId = SmartScheduleManager.taskIdToAlarmId(task.id)
                     val triggerAtMillis = startMillis - 15 * 60 * 1000 // 提前 15 分钟
                     if (triggerAtMillis > now) {
                         AlarmScheduler.scheduleTaskAlarm(
@@ -63,7 +63,7 @@ class BootReceiver : BroadcastReceiver() {
                     if (task.taskType == "daily") {
                         AlarmScheduler.scheduleTaskAlarm(
                             context = context,
-                            alarmId = alarmId + 1, // 使用不同 ID 避免冲突
+                            alarmId = SmartScheduleManager.dailyNextDayAlarmId(task.id), // 使用不同 ID 避免冲突
                             triggerAtMillis = startMillis + 24 * 3600_000 - 15 * 60 * 1000,
                             title = task.content,
                             message = "⏰ 15分钟后：${task.content}"

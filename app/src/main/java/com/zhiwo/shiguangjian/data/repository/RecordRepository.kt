@@ -34,6 +34,18 @@ class RecordRepository(
 
     suspend fun updateRecord(record: RecordEntity) = recordDao.updateRecord(record)
 
+    /** 删记录并保留其任务（任务摘链，打卡史不动）——整理/合并/转记忆一律走这条 */
+    suspend fun deleteRecordKeepingTasks(id: Long) {
+        database.withTransaction {
+            taskDao.detachTasksFromRecord(id)
+            tagDao.deleteRecordTagsByRecordId(id)
+            keyInfoDao.deleteKeyInfosByRecordId(id)
+            recordDao.deleteRecordById(id)
+            tagDao.deleteOrphanTags()
+        }
+    }
+
+    /** 删记录且连任务一起删（只有用户显式选择"连同任务删除"时才用） */
     suspend fun deleteRecord(id: Long) {
         database.withTransaction {
             // 先手动删除关联数据（CASCADE 作为兜底），再删除记录本身

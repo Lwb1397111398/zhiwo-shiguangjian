@@ -10,6 +10,46 @@ import java.util.Calendar
 
 object AlarmScheduler {
 
+    private val FIXED_ALARM_IDS = listOf(
+        AlarmIds.MORNING_TASKS, AlarmIds.EVENING_TASKS, AlarmIds.DAILY_REVIEW, AlarmIds.WEEKLY_REVIEW
+    )
+
+    /**
+     * 固定提醒（1001-1004）纳入"智能提醒"开关：
+     * 开启时正常调度，关闭时取消全部固定闹钟（任务级闹钟不受此开关影响）。
+     * 调用方需在协程中执行（读设置走 Room）。
+     */
+    suspend fun syncFixedAlarms(context: Context) {
+        val app = context.applicationContext as? com.zhiwo.shiguangjian.ZhiwoApplication ?: run {
+            scheduleAllAlarms(context)
+            return
+        }
+        val enabled = try {
+            app.database.settingDao().getSettingValue("smartReminder") != "false"
+        } catch (_: Throwable) {
+            true
+        }
+        if (enabled) {
+            scheduleAllAlarms(context)
+        } else {
+            cancelFixedAlarms(context)
+        }
+    }
+
+    /** 取消全部固定提醒闹钟 */
+    fun cancelFixedAlarms(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+        FIXED_ALARM_IDS.forEach { id ->
+            val intent = Intent(context, AlarmReceiver::class.java)
+            val pendingIntent = PendingIntent.getBroadcast(
+                context, id, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            alarmManager.cancel(pendingIntent)
+        }
+        Log.d("AlarmScheduler", "智能提醒已关闭，固定闹钟全部取消")
+    }
+
     fun scheduleAllAlarms(context: Context) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: run {
             Log.e("AlarmScheduler", "无法获取 AlarmManager，跳过闹钟设置")

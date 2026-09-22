@@ -24,14 +24,24 @@ data class ConsolidateItem(
     val text: String = ""
 )
 
+/**
+ * AI 认为可清理的一项。
+ * [itemIndexes] 是 prompt 里「待分类信息」的 1 基序号；缺失时整理页退回文本匹配，
+ * 两条路都对不上就不生成清理提案（绝不把全部所选 id 塞进一条提案）。
+ */
+data class CleanableItem(
+    val text: String,
+    val itemIndexes: List<Int> = emptyList()
+)
+
 data class ClassifyResult(
     val memories: List<String>,
-    val cleanable: List<String>
+    val cleanable: List<CleanableItem>
 )
 
 data class SmartCleanResult(
-    val shouldClean: List<String>,
-    val shouldKeep: List<String>
+    val shouldClean: List<CleanableItem>,
+    val shouldKeep: List<CleanableItem>
 )
 
 data class MemoryEvolveItem(

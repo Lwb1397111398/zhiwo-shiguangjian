@@ -39,6 +39,10 @@ interface TaskDao {
     @Query("DELETE FROM tasks WHERE id = :id")
     suspend fun deleteTaskById(id: Long)
 
+    /** 删记录时先把任务摘链：任务与它的打卡记录属于用户，不属于某一条记录 */
+    @Query("UPDATE tasks SET recordId = NULL WHERE recordId = :recordId")
+    suspend fun detachTasksFromRecord(recordId: Long)
+
     @Query("DELETE FROM tasks WHERE recordId = :recordId")
     suspend fun deleteTasksByRecordId(recordId: Long)
 

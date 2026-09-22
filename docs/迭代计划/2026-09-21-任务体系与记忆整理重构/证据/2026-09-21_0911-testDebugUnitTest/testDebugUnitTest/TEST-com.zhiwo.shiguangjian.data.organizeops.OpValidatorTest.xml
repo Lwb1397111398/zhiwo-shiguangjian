@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" tests="24" skipped="0" failures="0" errors="0" timestamp="2026-09-21T01:12:13" hostname="文彬三号" time="0.096">
+  <properties/>
+  <testcase name="evolve stale when memory deleted and new text absent" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.038"/>
+  <testcase name="unknown type is invalid" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="evolve stale when memory content changed since proposal" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.002"/>
+  <testcase name="plan batch includes blocked ops for dependency re-evaluation" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.007"/>
+  <testcase name="delete source executes when only some sources remain and unchanged" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.02"/>
+  <testcase name="dependency blocked when a dep is missing or pending" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.006"/>
+  <testcase name="payloads roundtrip" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.006"/>
+  <testcase name="dependency blocked when a dep failed" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.0"/>
+  <testcase name="dependency satisfied only when all deps applied" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.0"/>
+  <testcase name="evolve executes when memory active and text matches" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.0"/>
+  <testcase name="evolve already applied when new text exists and old superseded" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="plan batch keeps only checked pending and sorts by type priority" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.0"/>
+  <testcase name="content hash is stable and collision-tested for edit detection" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.002"/>
+  <testcase name="save memory is idempotent when same active text exists" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="save memory executes when no duplicate active memory" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.0"/>
+  <testcase name="save memory executes when same text only exists as superseded" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.0"/>
+  <testcase name="delete source executes when sources unchanged" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.002"/>
+  <testcase name="delete source is stale when record content changed" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.002"/>
+  <testcase name="delete source not stale when only updatedAt changed but hash matches" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="plan batch with all applied returns empty" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.0"/>
+  <testcase name="delete source falls back to version check when hash missing" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="delete source already applied when all sources gone" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.001"/>
+  <testcase name="save memory with blank content is invalid" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.0"/>
+  <testcase name="garbage payload decodes to null without throwing" classname="com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -46,3 +46,6 @@ tmp/
 
 # Captures
 captures/
+
+# Raw Gradle test output inside evidence folders (keep readable XML/TXT only)
+**/binary/

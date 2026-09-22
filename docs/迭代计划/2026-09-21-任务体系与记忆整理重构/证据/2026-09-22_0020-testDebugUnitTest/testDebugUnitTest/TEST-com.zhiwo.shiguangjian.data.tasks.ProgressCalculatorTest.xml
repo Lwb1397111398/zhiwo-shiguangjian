@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" tests="21" skipped="0" failures="0" errors="0" timestamp="2026-09-21T16:23:14" hostname="文彬三号" time="0.088">
+  <properties/>
+  <testcase name="MFP01_单计划三任务混合的应做已做漏做" classname="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" time="0.025"/>
+  <testcase name="MFP13_未填出现日期的临时任务不计入" classname="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" time="0.001"/>
+  <testcase name="MFP02_目标含两个计划时不得双算" classname="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" time="0.004"/>
+  <testcase name="MFP15_目标已达成时其任务不再计入" classname="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" time="0.001"/>
+  <testcase name="MFP06_超过三百六十六天只算最近一年并标记截断" classname="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" time="0.007"/>
+  <testcase name="MFP18_中间漏做一天连续归零且与streakOf一致" classname="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" time="0.003"/>
+  <testcase name="MFP21_每个计划与目标都有条目且可安全重复调用" classname="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" time="0.006"/>
+  <testcase name="MFP10_撤销完成的软标记等同于没有记录" classname="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" time="0.001"/>
+  <testcase name="MFP07_记了未完成原因的不算漏做" classname="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" time="0.002"/>
+  <testcase name="MFP05_应做为零时percent为负一而非零" classname="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" time="0.001"/>
+  <testcase name="MFP16_计划脱离目标后其任务不再算进旧目标" classname="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" time="0.001"/>
+  <testcase name="MFP03_直挂目标的任务与其下计划一并计入目标" classname="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" time="0.004"/>
+  <testcase name="MFP19_被重复规则跳过的天不打断连续" classname="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" time="0.007"/>
+  <testcase name="MFP04_自由任务不进任何进度" classname="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" time="0.001"/>
+  <testcase name="MFP12_临时任务任意日期的完成记录都算已做" classname="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" time="0.001"/>
+  <testcase name="MFP14_计划暂停时其任务既不计计划也不计目标" classname="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" time="0.001"/>
+  <testcase name="MFP11_临时任务过了那天没做算漏做_当天未过不算" classname="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" time="0.001"/>
+  <testcase name="MFP08_扫描下界不得早于任务生效日" classname="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" time="0.001"/>
+  <testcase name="MFP09_重复规则跳过的那天不算应做" classname="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" time="0.003"/>
+  <testcase name="MFP17_连续天数与引擎streakOf一致" classname="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" time="0.009"/>
+  <testcase name="MFP20_空输入与脏日期都不崩" classname="com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

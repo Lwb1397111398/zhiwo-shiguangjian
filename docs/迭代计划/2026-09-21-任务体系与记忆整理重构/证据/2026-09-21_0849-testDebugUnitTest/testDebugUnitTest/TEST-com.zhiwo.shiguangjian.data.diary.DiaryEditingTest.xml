@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.diary.DiaryEditingTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-09-21T00:50:36" hostname="文彬三号" time="0.006">
+  <properties/>
+  <testcase name="user edited diary is protected from auto regeneration" classname="com.zhiwo.shiguangjian.data.diary.DiaryEditingTest" time="0.005"/>
+  <testcase name="prepareEditedDiary resets exported flag after content changes" classname="com.zhiwo.shiguangjian.data.diary.DiaryEditingTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

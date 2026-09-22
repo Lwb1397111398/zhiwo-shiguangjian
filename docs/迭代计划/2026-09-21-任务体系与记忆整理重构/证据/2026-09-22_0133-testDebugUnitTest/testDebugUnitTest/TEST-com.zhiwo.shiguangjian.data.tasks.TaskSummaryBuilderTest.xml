@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.tasks.TaskSummaryBuilderTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-09-21T17:35:19" hostname="文彬三号" time="0.027">
+  <properties/>
+  <testcase name="S05_无任务时返回空文本而不是空话" classname="com.zhiwo.shiguangjian.data.tasks.TaskSummaryBuilderTest" time="0.007"/>
+  <testcase name="S06_周进度按排期日展开且只算已打卡" classname="com.zhiwo.shiguangjian.data.tasks.TaskSummaryBuilderTest" time="0.001"/>
+  <testcase name="S01_当天已打卡输出勾并且带回填内容" classname="com.zhiwo.shiguangjian.data.tasks.TaskSummaryBuilderTest" time="0.002"/>
+  <testcase name="S07_周进度里被重复规则跳过的天不计入分母" classname="com.zhiwo.shiguangjian.data.tasks.TaskSummaryBuilderTest" time="0.001"/>
+  <testcase name="S03_未做带原因时输出叉与原因" classname="com.zhiwo.shiguangjian.data.tasks.TaskSummaryBuilderTest" time="0.001"/>
+  <testcase name="S02_历史日期不能用今天的完成态倒推" classname="com.zhiwo.shiguangjian.data.tasks.TaskSummaryBuilderTest" time="0.001"/>
+  <testcase name="S04_文本拼接包含内容原因与留白记录" classname="com.zhiwo.shiguangjian.data.tasks.TaskSummaryBuilderTest" time="0.007"/>
+  <testcase name="S08_休息日不计入只在工作日任务的分母" classname="com.zhiwo.shiguangjian.data.tasks.TaskSummaryBuilderTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

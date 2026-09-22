@@ -15,12 +15,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 **强烈建议本机固定使用项目级 Gradle Home**，避免与其他工程共享 `%USERPROFILE%\.gradle` 导致 Test Worker classpath 串项目（`ClassNotFoundException: GradleWorkerMain`）：
 
 ```bash
-# 推荐写法（所有 gradlew 命令加 -g ".gradle-home"）
-./gradlew --no-daemon --max-workers=1 -g ".gradle-home" :app:compileDebugKotlin
-./gradlew --no-daemon --max-workers=1 -g ".gradle-home" :app:testDebugUnitTest
-./gradlew --no-daemon --max-workers=1 -g ".gradle-home" :app:assembleDebug
-./gradlew --no-daemon --max-workers=1 -g ".gradle-home" clean
+# 唯一可用入口（源码镜像到纯 ASCII 目录 + ASCII Gradle Home，见下方"中文路径"一节）
+bash tools/verify.sh compileDebugKotlin
+bash tools/verify.sh testDebugUnitTest
+bash tools/verify.sh assembleDebug
 ```
+
+**中文路径会让构建假装成功**：① AGP 直接拒建（已加 `android.overridePathCheck=true` 跳过检查）；② Kotlin 守护进程与 Gradle test worker 把中文路径转义成 `u77E5...` —— 编译期报 "plugin classpath entry points to a non-existent location"，测试期所有测试类 `ClassNotFoundException`。实测**无效**的两条路：ASCII junction 指向项目目录（Gradle 会规范化回真实路径）、把 `-Djava.io.tmpdir` 指到 ASCII。唯一解法就是 `tools/verify.sh`：源码 robocopy 到 `E:\AI Agent\zhiwo-build` 构建，Gradle Home 用 `E:\AI Agent\zhiwo-gradle-home`（1.2G 依赖缓存副本，离线复制，不要联网重下）。**只在真目录改代码**，镜像是临时工作区。
+
+**读测试结果必须验新鲜度**：`app/build/test-results/*.xml` 会留在原地（本项目曾把 2026-08-23 的旧 XML 当成"122 个测试通过"的证据）。`verify.sh` 跑之前清空镜像结果、用 `.run-start` 时间戳断言"非本次产生的 XML == 0"，并把汇总写进 `docs/quality/GATE-*.txt`（进版本库）。注意 XML 里的 `timestamp` 是 **UTC**，别拿本地日期比。
 
 `.gradle-home/` 已在 `.gitignore` 中，勿提交。
 
@@ -47,6 +50,32 @@ JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
 
 **AGP 8.2.2 与 compileSdk 36 不是官方兼容组合**。`gradle.properties` 中通过 `android.suppressUnsupportedCompileSdk=36` 抑制警告。android-34 平台缺少 `android.jar`，因此必须使用 compileSdk 36。**升级 AGP 或 Gradle 前请注意**：外网下载在此环境下不可靠，需谨慎操作。
 
+### 迁移链约定（重要决定，勿删）
+
+正式迁移链从 **v3 起完整**（v3→v13）。**v1、v2 的 schema 信息在代码库中不存在，无法补齐迁移**——本项目实际不存在 v1/v2 存量用户（主要用户从 v9+ 开始使用），因此不做 v1/v2 兼容。防线：Release 构建无 `fallbackToDestructiveMigration`，迁移失败时 `AppDatabase.rebuild()` 会把主库 + `-wal` + `-shm` 三件套改名备份为 `.migration_backup_<时间戳>` 后重建，原数据可人工抢救。设置页存储区会显示备份文件存在提示。
+
+**v13 起 debug 与 release 的迁移行为一致**：原先 debug 独有的 `fallbackToDestructiveMigration()` 已删除（它会让缺迁移时静默清库、`rebuild()` 与备份逻辑都不执行）。真机迁移验收**用 debug 包**：release 没配 `signingConfig`，产物是 `app-release-unsigned.apk` 装不上，且与 debug 签名不同源，覆盖安装要先卸载 = 手机上唯一一份数据清零。
+
+### 当前验证状态（2026-08 第三批结束时）
+
+- 代码实现完成：记忆对账/生命周期、整理两阶段（依赖保护/forceDelete）、日记改版+重生成+历史纠错扫描、reviews/diaries 契约（v12）
+- JVM 单元测试 278 个（基线 125 + 本轮新增 153）与 Debug APK 构建通过，证据：`docs/quality/GATE-testDebugUnitTest-*.txt`
+- **尚未验证（不标记最终验收通过）**：真机升级迁移（v12→v13）、Release WAL 备份恢复、核心 UI 交互
+- 本地无可用模拟器（系统镜像目录为空壳，外网下载不可靠），不为此引入 sqlite-jdbc——Room 迁移最终需真实 Android SQLite 环境，用真机一次验证更有价值
+
+### 真机最终验收顺序（全部功能完成后执行）
+
+1. 安装旧版 v11，创建记录、记忆、日记、整理提案
+2. 覆盖安装正式 v12 包，确认数据和旧提案可读（**关键：正常迁移完整性**）
+3. 验证日记筛选、统计、阅读、导出和重新生成保护（isUserEdited 拒绝覆盖）
+4. 验证法考历史纠错扫描及未编辑日记重生成
+5. 验证整理页"只删不存"的二次确认和依赖保护
+6. Release 包执行缺失迁移测试，确认 `.migration_backup_` 主库 + `-wal` + `-shm` 三件套均生成（**关键：异常迁移数据保护**）
+7. 关闭智能提醒确认固定提醒取消；重新打开确认恢复
+8. 输入非法 API 地址，确认保存被拒绝并显示错误
+
+其中第 2、6 步最重要。这轮真机验证完成前，第三批保持"代码完成、待设备验证"状态。
+
 ---
 
 ## 技术栈
@@ -60,25 +89,38 @@ Kotlin 1.9.24 · Jetpack Compose (BOM 2024.02.00) · Room 2.6.1 (KSP) · Retrofi
 ```
 app/src/main/java/com/zhiwo/shiguangjian/
   MainActivity.kt              # 单 Activity，权限请求，闹钟调度，NavHost
-  ZhiwoApplication.kt          # Application：Room 数据库单例，通知渠道初始化，全局异常捕获
+  ZhiwoApplication.kt          # Application：Room 单例，通知渠道，全局异常捕获，appScope，数据库预热兜底
   data/
     db/
-      AppDatabase.kt           # Room 数据库（单例，破坏性迁移，version=2）
-      entity/                  # 8 个实体（Record, Task, Tag, RecordTagCrossRef, KeyInfo, Review, Memory, Setting）
-      dao/                     # 7 个 DAO（全部返回 Flow，响应式读取）
-    repository/                # 5 个仓库（Record, Task, Review, Memory, Settings）
+      AppDatabase.kt           # Room 数据库（单例，version=13；v13 新增 goals/plans/task_occurrences/day_overrides 四表 + tasks 加 15 列 + memories.occurredAt）
+      entity/                  # 15 个实体（Record, Task, Tag, CrossRef, KeyInfo, Review, Memory, Setting, Diary, SpecialDate, OrganizeOp）
+      dao/                     # 9 个 DAO（全部返回 Flow，响应式读取）
+    repository/                # 7 个仓库（Record, Task, Review, Memory, Diary, Settings, SecureSettings）
     ai/
       AiApiService.kt          # Retrofit 接口（POST chat/completions，JsonObject 入参）
-      AiRepository.kt          # 核心 AI 逻辑：分析内容、生成日/周评价、提取记忆、整理分类等
+      AiPrompts.kt             # 全部 Prompt 模板（评价/日记/周报含"事实底线"接地约束）
+      AiRepository.kt          # 核心 AI 逻辑：分析、评价、记忆提取、对账、整理提案等
+    memory/                    # 记忆对账：MemoryReconciliation（纯逻辑）+ MemoryReconcileService（执行器）
+    organizeops/               # 整理两阶段：OpPayloads/OpValidator（纯逻辑）+ OrganizeOpExecutor（Apply 执行器）
+    profile/                   # 用户画像 + blocklist
+    organize/                  # RecordOrganizer（记录合并/拆分/转记忆事务操作）
   ui/
-    theme/                     # Color.kt, Theme.kt (亮色/暗色), Type.kt
-    screens/                   # 8 个页面 Composable
-    viewmodel/                 # 7 个 ViewModel（全部继承 AndroidViewModel，手动构造仓库，无 DI 框架）
-    components/                # BottomNavBar, CalendarGrid, RecordCard, TaskItem
-  alarm/                       # AlarmScheduler（4 个重复闹钟）, AlarmReceiver, BootReceiver, SmartScheduleManager
-  notification/                # NotificationHelper（3 个通知渠道）
-  calendar/                    # CalendarHelper（系统日历 CRUD，尚未被 UI 调用）
+    screens/                   # 11 个页面 Composable
+    viewmodel/                 # 10 个 ViewModel（全部 AndroidViewModel，手动构造仓库，无 DI）
+  alarm/                       # AlarmScheduler, AlarmReceiver, BootReceiver, SmartScheduleManager（闹钟ID统一 taskIdToAlarmId）
 ```
+
+### 记忆状态机（v10+）
+
+memories.status: `active`（生效，注入 prompt）→ `superseded`（被更正停用，supersededBy 指向新记忆）；
+`under_review`（存在待确认冲突，不注入 prompt，用户应用/忽略后转移）。
+对账触发点：保存记录后（appScope 异步）、每日评价时、目标完成/放弃时。高置信自动应用，中低置信进记忆页待确认队列（settings 表持久化）。
+
+### 整理页两阶段（v11+）
+
+Plan（generateXxx）只调 AI 并写 organize_ops 表（PENDING 提案，payload 自包含源ID+版本快照），不碰业务表；
+审核 UI 支持逐条勾选/编辑文本/忽略/恢复原建议；Apply（applyBatch）由 OrganizeOpExecutor 按
+EVOLVE → SAVE_MEMORY → DELETE_SOURCE 顺序逐条独立事务执行，幂等 + STALE（源数据变化）校验。
 
 ### 路由 (NavHost, 8 条)
 
@@ -107,7 +149,7 @@ app/src/main/java/com/zhiwo/shiguangjian/
 - **无 DI 框架**：所有 ViewModel 继承 `AndroidViewModel`，在构造函数中通过 `ZhiwoApplication.instance.database` 手动获取 DAO 并构造 Repository
 - **响应式读取**：所有 DAO 查询返回 `Flow`，ViewModel 中通过 `collectAsState` 绑定到 Compose UI
 - **写操作切线程**：数据库写入使用 `withContext(Dispatchers.IO)` 切换到 IO 线程
-- **Room 破坏性迁移**：`fallbackToDestructiveMigration()`，schema 变更会清空数据
+- **Room 迁移**：无破坏性兜底，加表/加列必须写 `Migration`（`ADD COLUMN` 前先 `PRAGMA table_info` 探测以支持失败重跑），迁移末尾做行数自检
 - **AI 限速**：最小调用间隔 3 秒，90 秒超时
 - **全局异常捕获**：`ZhiwoApplication` 中设置了 `UncaughtExceptionHandler`，崩溃日志输出到 Logcat
 

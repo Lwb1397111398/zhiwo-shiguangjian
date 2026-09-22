@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.tasks.HolidayCalendarTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-09-21T16:23:14" hostname="文彬三号" time="0.017">
+  <properties/>
+  <testcase name="H04_国庆七天全部判为休息日" classname="com.zhiwo.shiguangjian.data.tasks.HolidayCalendarTest" time="0.008"/>
+  <testcase name="H05_调休补班的周六判为工作日" classname="com.zhiwo.shiguangjian.data.tasks.HolidayCalendarTest" time="0.002"/>
+  <testcase name="H07_用户覆盖优先于内置表" classname="com.zhiwo.shiguangjian.data.tasks.HolidayCalendarTest" time="0.0"/>
+  <testcase name="H02_公告里的星期与推算一致" classname="com.zhiwo.shiguangjian.data.tasks.HolidayCalendarTest" time="0.001"/>
+  <testcase name="H09_含节假日策略的任务在国庆不出现" classname="com.zhiwo.shiguangjian.data.tasks.HolidayCalendarTest" time="0.001"/>
+  <testcase name="H01_已录入年份可查询" classname="com.zhiwo.shiguangjian.data.tasks.HolidayCalendarTest" time="0.0"/>
+  <testcase name="H11_数据来源已标注" classname="com.zhiwo.shiguangjian.data.tasks.HolidayCalendarTest" time="0.001"/>
+  <testcase name="H10_只在休息日的任务国庆出现平时不出现" classname="com.zhiwo.shiguangjian.data.tasks.HolidayCalendarTest" time="0.0"/>
+  <testcase name="H08_该年无数据时返回空不瞎猜" classname="com.zhiwo.shiguangjian.data.tasks.HolidayCalendarTest" time="0.001"/>
+  <testcase name="H06_普通周末无内置标记时按周末判定" classname="com.zhiwo.shiguangjian.data.tasks.HolidayCalendarTest" time="0.001"/>
+  <testcase name="H03_放假日天数与公告一致" classname="com.zhiwo.shiguangjian.data.tasks.HolidayCalendarTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

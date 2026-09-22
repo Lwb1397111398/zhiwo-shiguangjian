@@ -9,6 +9,8 @@ import com.google.gson.reflect.TypeToken
 import com.zhiwo.shiguangjian.ZhiwoApplication
 import com.zhiwo.shiguangjian.alarm.SmartScheduleManager
 import com.zhiwo.shiguangjian.data.ai.DateFormats
+import com.zhiwo.shiguangjian.data.db.LegacyTaskRow
+import com.zhiwo.shiguangjian.data.db.mapLegacyTask
 import com.zhiwo.shiguangjian.data.db.entity.KeyInfoEntity
 import com.zhiwo.shiguangjian.data.db.entity.RecordEntity
 import com.zhiwo.shiguangjian.data.db.entity.TaskEntity
@@ -153,6 +155,20 @@ class InputViewModel(application: Application) : AndroidViewModel(application) {
                         if (analysis.tasks.isNotEmpty()) {
                             val autoSync = settingsRepo.getSetting("autoCalendarSync") != "false"
                             analysis.tasks.forEach { task ->
+                                // AI 只给老的 taskType/dueDate。新列用同一个存量映射函数推导，
+                                // 保证"AI 建的任务"与"迁移搬进来的任务"结构一致，不多造一套判断
+                                val (mapped, _) = mapLegacyTask(
+                                    LegacyTaskRow(
+                                        id = 0L, content = task.content, recordId = id,
+                                        parentGoalId = if (correctedCategory == "goal") id else null,
+                                        dueDate = task.dueDate, taskType = task.taskType,
+                                        isCompleted = false, completedAt = null,
+                                        dailyCompletionDate = null, isPermanentlyCompleted = false,
+                                        calendarEventId = null, createdAt = now
+                                    ),
+                                    goalIdOf = { null },
+                                    today = DateFormats.nowDate()
+                                )
                                 val taskId = taskRepo.insertTask(
                                     TaskEntity(
                                         recordId = id,
@@ -161,7 +177,14 @@ class InputViewModel(application: Application) : AndroidViewModel(application) {
                                         dueDate = task.dueDate,
                                         taskType = task.taskType,
                                         isCompleted = false,
-                                        createdAt = now
+                                        createdAt = now,
+                                        kind = mapped.kind,
+                                        repeatRule = mapped.repeatRule,
+                                        weekdaysCsv = mapped.weekdaysCsv,
+                                        startDate = mapped.startDate,
+                                        scheduledDate = mapped.scheduledDate,
+                                        remindTime = mapped.remindTime,
+                                        status = mapped.status
                                     )
                                 )
 
@@ -183,24 +206,52 @@ class InputViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
 
-                scheduledTasks.forEach { request ->
-                    val (eventId, _) = SmartScheduleManager.scheduleTask(
-                        context = app,
-                        taskId = request.taskId,
-                        taskContent = request.taskContent,
-                        taskType = request.taskType,
-                        dueDate = request.dueDate,
-                        recordTitle = request.recordTitle
-                    )
-                    if (eventId != null) {
-                        val task = taskRepo.getTaskById(request.taskId)
-                        if (task != null) {
-                            taskRepo.updateTask(task.copy(calendarEventId = eventId))
+                // 写日历 + 注册闹钟属系统调用，切 IO；失败不阻断保存流程
+                try {
+                    kotlinx.coroutines.withContext(Dispatchers.IO) {
+                        scheduledTasks.forEach { request ->
+                            val (eventId, _) = SmartScheduleManager.scheduleTask(
+                                context = app,
+                                taskId = request.taskId,
+                                taskContent = request.taskContent,
+                                taskType = request.taskType,
+                                dueDate = request.dueDate,
+                                recordTitle = request.recordTitle
+                            )
+                            if (eventId != null) {
+                                val task = taskRepo.getTaskById(request.taskId)
+                                if (task != null) {
+                                    taskRepo.updateTask(task.copy(calendarEventId = eventId))
+                                }
+                            }
                         }
                     }
+                } catch (e: Throwable) {
+                    android.util.Log.e("InputVM", "日历/闹钟调度失败（不影响保存）", e)
                 }
 
                 onSuccess(recordId)
+
+                // 保存后异步对账：新记录若与旧记忆冲突（如"忘记报名法考"推翻"准备法考"），
+                // 用 appScope 保证跳转详情页（本 VM 销毁）后仍能完成
+                app.appScope.launch {
+                    try {
+                        val contentForReconcile = buildString {
+                            append(safeTitle).append('\n')
+                            append(content.take(600))
+                            if (analysis.keyInfo.isNotEmpty()) {
+                                append('\n').append(analysis.keyInfo.joinToString("；"))
+                            }
+                        }
+                        app.memoryReconciler.reconcileAndApply(
+                            newContent = contentForReconcile,
+                            now = DateFormats.nowDateTimeIso(),
+                            sourceRecordId = recordId
+                        )
+                    } catch (e: Throwable) {
+                        android.util.Log.e("InputVM", "保存后记忆对账失败（忽略）", e)
+                    }
+                }
             } catch (e: Throwable) {
                 android.util.Log.e("InputVM", "saveAndAnalyze 失败", e)
                 onError("AI 分析失败：${e.message ?: "未知错误"}。请检查配置或稍后重试。")

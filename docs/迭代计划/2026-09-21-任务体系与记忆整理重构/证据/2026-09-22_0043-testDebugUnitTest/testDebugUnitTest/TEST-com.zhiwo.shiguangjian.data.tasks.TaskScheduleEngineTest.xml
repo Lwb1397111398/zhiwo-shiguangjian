@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" tests="37" skipped="0" failures="0" errors="0" timestamp="2026-09-21T16:44:33" hostname="文彬三号" time="0.071">
+  <properties/>
+  <testcase name="MFD14_昨天该做没做算一条漏做" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.015"/>
+  <testcase name="MFI01_interval距锚点非整数倍不命中" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFI03_intervalDays小于1按1处理" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFD17_同一天重复调用结果一致且不改入参" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.015"/>
+  <testcase name="MFD11_所属计划暂停时任务不出现" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFB15_起始日按前10位解析" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFI02_interval按锚点取模" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFB01_区间端点包含而越界排除" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFC04_用户覆盖优先于内置表" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFD09_blank回填后计入已完成_未回填不改变分母" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFB12_日期串非法时不出现不崩" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFD18_每个任务当天至多一条" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.002"/>
+  <testcase name="MFD05_adhoc脏数据期限早于出现日_判过期不丢弃" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFD10_done与not_done在同一任务上互斥显示" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.0"/>
+  <testcase name="MFB14_interval锚点回退到创建日_迁移日之前一律不排" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.0"/>
+  <testcase name="MFB13_custom空csv退化为每天" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFB09_csv脏值忽略非法项" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFC06_weekdays与workday_only取交集时周六补班仍不出现" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.0"/>
+  <testcase name="MFB01_everyday_周一到周日都命中" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFB11_paused与archived不出现" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.0"/>
+  <testcase name="MFD16_漏做打断连续" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFC03_调休补班日由dayTypeOf给出WORKDAY" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFD13_missedOn不回溯到迁移日之前" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFB05_weekdays_周六不命中" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFD03_adhoc过了指定日未完成进过期" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFD02_adhoc只在指定日出现_前一天不出现" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFC02_该年无节假日数据时含策略的任务一律不排" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFC05_覆盖值脏了当作没填_该年无内置数据则返回null" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFD04_adhoc无指定日_超过期限才过期" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.0"/>
+  <testcase name="MFC01_workday_only只在判定为工作日时出现" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFB08_custom_周日ISO为7" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.0"/>
+  <testcase name="MFD07_adhoc昨天补的打卡不抬高今天的分母" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.0"/>
+  <testcase name="MFD06_adhoc今天完成则计入已完成且分母不变" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFB07_custom_按csv命中" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFD08_blank今天出现" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.001"/>
+  <testcase name="MFB04_起止倒挂永不出现且不崩" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.0"/>
+  <testcase name="MFD15_不被重复规则跳过的日子打断连续" classname="com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

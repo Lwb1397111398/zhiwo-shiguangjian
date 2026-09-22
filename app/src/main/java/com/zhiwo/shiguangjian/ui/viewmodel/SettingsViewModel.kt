@@ -25,7 +25,9 @@ data class StorageInfo(
     val tasks: Int,
     val tags: Int,
     val reviews: Int,
-    val memories: Int
+    val memories: Int,
+    /** 数据库目录里是否存在迁移失败时的备份文件（.migration_backup_） */
+    val hasMigrationBackup: Boolean = false
 )
 
 data class CategoryInfo(
@@ -109,12 +111,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             try {
                 _storageInfo.value = withContext(Dispatchers.IO) {
+                    val dbDir = app.getDatabasePath("zhiwo_shiguangjian").parentFile
+                    val hasBackup = dbDir?.listFiles()
+                        ?.any { it.name.contains(".migration_backup_") } == true
                     StorageInfo(
                         records = recordRepo.getRecordCount(),
                         tasks = taskRepo.getTaskCount(),
                         tags = app.database.tagDao().getTagCount(),
                         reviews = reviewRepo.getReviewCount(),
-                        memories = memoryRepo.getMemoryCount()
+                        memories = memoryRepo.getMemoryCount(),
+                        hasMigrationBackup = hasBackup
                     )
                 }
             } catch (e: Throwable) {
@@ -155,13 +161,19 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun updateModelName(value: String) { _modelName.value = value }
 
     fun saveApiConfig(onSuccess: () -> Unit = {}, onError: (String) -> Unit = {}) {
+        // 保存前校验：URL 缺协议前缀时 AiRepository.configure 会静默失败，这里立即报错
+        val url = _apiBaseUrl.value.trim()
+        if (url.isNotEmpty() && !url.startsWith("http://") && !url.startsWith("https://")) {
+            onError("API 地址必须以 http:// 或 https:// 开头（如 https://api.deepseek.com/v1）")
+            return
+        }
         viewModelScope.launch {
             try {
-                settingsRepo.setSetting("apiBaseUrl", _apiBaseUrl.value)
+                settingsRepo.setSetting("apiBaseUrl", url)
                 secureSettingsRepo.setApiKey(_apiKey.value)
                 settingsRepo.deleteSetting("apiKey")
                 settingsRepo.setSetting("modelName", _modelName.value)
-                aiRepo.configure(_apiBaseUrl.value, _apiKey.value, _modelName.value)
+                aiRepo.configure(url, _apiKey.value, _modelName.value)
                 onSuccess()
             } catch (e: Throwable) {
                 android.util.Log.e("SettingsVM", "保存配置失败", e)
@@ -202,6 +214,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             try {
                 settingsRepo.setSetting("smartReminder", enabled.toString())
+                // 立即生效：开则重设固定闹钟，关则全部取消
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    val app = getApplication<Application>()
+                    if (enabled) {
+                        com.zhiwo.shiguangjian.alarm.AlarmScheduler.syncFixedAlarms(app)
+                    } else {
+                        com.zhiwo.shiguangjian.alarm.AlarmScheduler.cancelFixedAlarms(app)
+                    }
+                }
             } catch (e: Throwable) {
                 android.util.Log.e("SettingsVM", "toggleSmartReminder failed", e)
                 _smartReminder.value = oldValue
@@ -276,7 +297,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             reviews = reviewRepo.getAllReviews().first(),
             memories = memoryRepo.getAllMemories().first(),
             diaries = app.database.diaryDao().getAllDiaries().first(),
-            settings = settingsRepo.getAllSettings().first()
+            settings = settingsRepo.getAllSettings().first(),
+            goals = app.database.goalDao().getAllGoals().first(),
+            plans = app.database.planDao().getAllPlans().first(),
+            taskOccurrences = app.database.occurrenceDao().observeInRange("0000-01-01", "9999-12-31").first(),
+            dayOverrides = app.database.dayOverrideDao().getAll().first()
         )
         gson.toJson(exportData)
     }

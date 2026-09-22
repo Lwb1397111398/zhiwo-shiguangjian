@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zhiwo.shiguangjian.data.db.entity.RecordEntity
 import com.zhiwo.shiguangjian.data.db.entity.TaskEntity
+import com.zhiwo.shiguangjian.data.tasks.isTaskEffectivelyCompleted
 import com.zhiwo.shiguangjian.ui.theme.*
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -105,7 +106,7 @@ fun RecordCard(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
                         ) {
-                            if (task.isCompleted) onTaskUncomplete(task.id)
+                            if (isTaskEffectivelyCompleted(task)) onTaskUncomplete(task.id)
                             else onTaskComplete(task.id)
                         }
                     ) {

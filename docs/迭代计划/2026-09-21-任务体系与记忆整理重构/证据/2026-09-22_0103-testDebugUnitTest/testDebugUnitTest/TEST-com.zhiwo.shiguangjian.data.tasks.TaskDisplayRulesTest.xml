@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.tasks.TaskDisplayRulesTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-09-21T17:05:17" hostname="文彬三号" time="0.004">
+  <properties/>
+  <testcase name="daily task is only effectively completed on completion date" classname="com.zhiwo.shiguangjian.data.tasks.TaskDisplayRulesTest" time="0.002"/>
+  <testcase name="display date keeps daily tasks on today" classname="com.zhiwo.shiguangjian.data.tasks.TaskDisplayRulesTest" time="0.0"/>
+  <testcase name="display date parses one time task date" classname="com.zhiwo.shiguangjian.data.tasks.TaskDisplayRulesTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

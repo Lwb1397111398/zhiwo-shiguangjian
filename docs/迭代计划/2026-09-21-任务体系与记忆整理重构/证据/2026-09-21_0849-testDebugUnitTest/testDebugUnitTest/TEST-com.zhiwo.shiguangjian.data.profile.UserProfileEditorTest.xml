@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.profile.UserProfileEditorTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-09-21T00:50:36" hostname="文彬三号" time="0.01">
+  <properties/>
+  <testcase name="empty profile after clear is empty" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorTest" time="0.001"/>
+  <testcase name="personality max and duplicate" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorTest" time="0.002"/>
+  <testcase name="isExpired handles blank and invalid" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorTest" time="0.002"/>
+  <testcase name="update text item replaces at index" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorTest" time="0.001"/>
+  <testcase name="prepareForSave drops expired recent states" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorTest" time="0.001"/>
+  <testcase name="text list respects max size" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorTest" time="0.001"/>
+  <testcase name="add text item rejects blank and duplicate" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorTest" time="0.0"/>
+  <testcase name="personality confidence clamped and labeled" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorTest" time="0.0"/>
+  <testcase name="remove text item" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorTest" time="0.0"/>
+  <testcase name="recent state days capped at one year" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorTest" time="0.0"/>
+  <testcase name="user delete then save without merge keeps deletion" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

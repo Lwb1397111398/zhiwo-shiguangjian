@@ -17,6 +17,8 @@ class ReviewRepository(private val reviewDao: ReviewDao) {
     suspend fun getReviewsByDateRange(startDate: String, endDate: String): List<ReviewEntity> =
         reviewDao.getReviewsByDateRange(startDate, endDate)
 
+    suspend fun getReviewById(id: Long): ReviewEntity? = reviewDao.getReviewById(id)
+
     suspend fun insertReview(review: ReviewEntity): Long = reviewDao.insertReview(review)
 
     suspend fun updateReview(review: ReviewEntity) = reviewDao.updateReview(review)

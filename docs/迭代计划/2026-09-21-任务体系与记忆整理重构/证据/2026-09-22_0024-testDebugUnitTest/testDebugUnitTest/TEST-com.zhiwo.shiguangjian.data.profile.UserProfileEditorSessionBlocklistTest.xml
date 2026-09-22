@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionBlocklistTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-09-21T16:26:15" hostname="文彬三号" time="0.444">
+  <properties/>
+  <testcase name="clear blocks all current items" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionBlocklistTest" time="0.372"/>
+  <testcase name="blocklist save failure keeps draft dirty and error" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionBlocklistTest" time="0.019"/>
+  <testcase name="manual add unblocks silently" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionBlocklistTest" time="0.008"/>
+  <testcase name="unblock then save removes from blocklist" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionBlocklistTest" time="0.007"/>
+  <testcase name="edit blocks old value and unblocks new if needed" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionBlocklistTest" time="0.005"/>
+  <testcase name="discard after delete does not persist blocklist" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionBlocklistTest" time="0.006"/>
+  <testcase name="autoUpdate switch is dirty and saved" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionBlocklistTest" time="0.015"/>
+  <testcase name="delete then save puts item into blocklist" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionBlocklistTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

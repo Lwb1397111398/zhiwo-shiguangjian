@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-09-21T16:26:15" hostname="文彬三号" time="0.196">
+  <properties/>
+  <testcase name="load existing profile" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionTest" time="0.033"/>
+  <testcase name="clear success writes empty profile only" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionTest" time="0.013"/>
+  <testcase name="expired recent states dropped on save" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionTest" time="0.006"/>
+  <testcase name="second save while already saving returns false" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionTest" time="0.085"/>
+  <testcase name="save failure keeps draft and dirty" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionTest" time="0.009"/>
+  <testcase name="duplicate and max limit rejected" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionTest" time="0.008"/>
+  <testcase name="add edit delete text items" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionTest" time="0.009"/>
+  <testcase name="damaged load becomes empty editable profile" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionTest" time="0.011"/>
+  <testcase name="save success clears dirty" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionTest" time="0.004"/>
+  <testcase name="clear failure keeps data" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionTest" time="0.008"/>
+  <testcase name="user delete then direct save is not restored by merge" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionTest" time="0.005"/>
+  <testcase name="markCleanForDiscard clears dirty immediately" classname="com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

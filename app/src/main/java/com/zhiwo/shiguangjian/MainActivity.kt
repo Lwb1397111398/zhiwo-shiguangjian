@@ -21,6 +21,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.zhiwo.shiguangjian.alarm.AlarmScheduler
+import com.zhiwo.shiguangjian.data.db.DbGate
+import com.zhiwo.shiguangjian.data.db.DbState
 import com.zhiwo.shiguangjian.data.repository.SettingsRepository
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.zhiwo.shiguangjian.ui.components.BottomNavBar
@@ -54,24 +56,52 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         requestPermissions()
 
-        // 设置闹钟（固定提醒受"智能提醒"开关控制）
-        (application as ZhiwoApplication).appScope.launch {
-            AlarmScheduler.syncFixedAlarms(this@MainActivity)
-        }
-
         setContent {
             val app = application as ZhiwoApplication
-            val settingsRepo = remember { SettingsRepository(app.database.settingDao()) }
-            val darkMode by settingsRepo.getAllSettings()
-                .map { settings -> settings.find { it.key == "darkMode" }?.value ?: "auto" }
-                .collectAsState(initial = "auto")
-            val useDynamicColor by settingsRepo.getAllSettings()
-                .map { settings -> settings.find { it.key == "dynamicColor" }?.value == "true" }
-                .collectAsState(initial = false)
+            val dbState by app.dbState.collectAsState()
 
-            ZhiwoTheme(darkMode = darkMode, useDynamicColor = useDynamicColor) {
-                MainApp()
+            // 门没开到 Ready 之前不组 NavHost：各 ViewModel 构造期就会打开数据库，
+            // 抢在门前面开库会让失败页赶不上第一次真失败
+            when (val state = dbState) {
+                DbState.Ready -> {
+                    androidx.compose.runtime.LaunchedEffect(Unit) {
+                        app.appScope.launch { AlarmScheduler.syncFixedAlarms(this@MainActivity) }
+                    }
+                    ZhiwoRoot(app)
+                }
+                DbState.Checking -> DbCheckingScreen()
+                is DbState.UpgradeFailed -> DbUpgradeFailedScreen(
+                    info = state.info,
+                    attempts = state.attempts,
+                    onRetry = { coldRestart() },
+                    onRebuildConfirmed = {
+                        // 全应用只有这一条路会清库，而且要先打字确认
+                        DbGate.requestRebuild(app)
+                        coldRestart()
+                    }
+                )
             }
+        }
+    }
+
+    /** 冷启动重来：迁移与清库都在下一个进程里做，避免继续用已被作废的懒加载单例 */
+    private fun coldRestart() {
+        android.os.Process.killProcess(android.os.Process.myPid())
+        kotlin.system.exitProcess(12)
+    }
+
+    @Composable
+    private fun ZhiwoRoot(app: ZhiwoApplication) {
+        val settingsRepo = remember { SettingsRepository(app.database.settingDao()) }
+        val darkMode by settingsRepo.getAllSettings()
+            .map { settings -> settings.find { it.key == "darkMode" }?.value ?: "auto" }
+            .collectAsState(initial = "auto")
+        val useDynamicColor by settingsRepo.getAllSettings()
+            .map { settings -> settings.find { it.key == "dynamicColor" }?.value == "true" }
+            .collectAsState(initial = false)
+
+        ZhiwoTheme(darkMode = darkMode, useDynamicColor = useDynamicColor) {
+            MainApp()
         }
     }
 

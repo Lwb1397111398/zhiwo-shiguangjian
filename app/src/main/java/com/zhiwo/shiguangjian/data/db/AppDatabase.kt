@@ -28,7 +28,7 @@ import com.zhiwo.shiguangjian.data.db.entity.*
         TaskOccurrenceEntity::class,
         DayOverrideEntity::class
     ],
-    version = 13,
+    version = AppDatabase.VERSION,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -49,6 +49,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun dayOverrideDao(): DayOverrideDao
 
     companion object {
+        /** 版本号只留这一处：失败页要说"从哪升到哪"，注解与运行时得是同一个数 */
+        const val VERSION = 13
+
         private const val DATABASE_NAME = "zhiwo_shiguangjian"
 
         /** ADD COLUMN 没有 IF NOT EXISTS 形式；迁移被中断后重跑会撞 duplicate column，所以逐条探测 */
@@ -277,6 +280,9 @@ abstract class AppDatabase : RoomDatabase() {
                     dbFile.delete()
                     java.io.File(dbFile.parentFile, "$DATABASE_NAME-wal").delete()
                     java.io.File(dbFile.parentFile, "$DATABASE_NAME-shm").delete()
+                    DbGate.markRebuilt(context.applicationContext, destDir.absolutePath)
+                } else {
+                    DbGate.markRebuilt(context.applicationContext, "（原来就没有数据库文件）")
                 }
                 INSTANCE = null
                 return getInstance(context)
@@ -284,6 +290,12 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         fun getInstance(context: Context): AppDatabase {
+            // 冷启动只有一条路会清库：用户在失败页上打字确认后留下的标记（见 DbGate）。
+            // 迁移异常本身绝不再触发清库 —— 以前是 catch 完直接 rebuild，用户只会看见"记录全空了"。
+            if (DbGate.rebuildRequested(context.applicationContext)) {
+                DbGate.takeRebuildRequest(context.applicationContext)
+                return rebuild(context)
+            }
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,

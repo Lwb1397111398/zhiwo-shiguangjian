@@ -27,7 +27,9 @@ data class StorageInfo(
     val reviews: Int,
     val memories: Int,
     /** 数据库目录里是否存在迁移失败时的备份文件（.migration_backup_） */
-    val hasMigrationBackup: Boolean = false
+    val hasMigrationBackup: Boolean = false,
+    /** 给设置页照抄的一句人话：数据库曾因升级失败被重建过，备份在哪 */
+    val migrationNote: String = ""
 )
 
 data class CategoryInfo(
@@ -114,13 +116,25 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     val dbDir = app.getDatabasePath("zhiwo_shiguangjian").parentFile
                     val hasBackup = dbDir?.listFiles()
                         ?.any { it.name.contains(".migration_backup_") } == true
+                    // rebuild() 现在把备份放到外部私有目录（databases/ 里正式版根本取不出来）
+                    val rebuildDir = app.getExternalFilesDir("migration_backup")
+                    val hasRebuildBackup = rebuildDir?.listFiles()?.isNotEmpty() == true
+                    val rebuilt = com.zhiwo.shiguangjian.data.db.DbGate.rebuiltNotice(app)
+                    val note = rebuilt?.let { (at, path) ->
+                        "${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
+                            .format(java.util.Date(at))} 数据库升级失败后按你的确认重建过一次，" +
+                            "原库备份在：$path"
+                    }
                     StorageInfo(
                         records = recordRepo.getRecordCount(),
                         tasks = taskRepo.getTaskCount(),
                         tags = app.database.tagDao().getTagCount(),
                         reviews = reviewRepo.getReviewCount(),
                         memories = memoryRepo.getMemoryCount(),
-                        hasMigrationBackup = hasBackup
+                        hasMigrationBackup = hasBackup || hasRebuildBackup || note != null,
+                        migrationNote = note
+                            ?: if (hasBackup || hasRebuildBackup)
+                                "检测到历史数据库备份（升级时曾自动恢复），原数据保存在备份文件中" else ""
                     )
                 }
             } catch (e: Throwable) {

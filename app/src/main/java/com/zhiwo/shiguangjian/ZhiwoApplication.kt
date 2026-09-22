@@ -17,6 +17,16 @@ class ZhiwoApplication : Application() {
     val database: AppDatabase by lazy { AppDatabase.getInstance(this) }
     val aiRepo = AiRepository()
 
+    private val _dbState = kotlinx.coroutines.flow.MutableStateFlow<com.zhiwo.shiguangjian.data.db.DbState>(
+        com.zhiwo.shiguangjian.data.db.DbState.Checking
+    )
+
+    /**
+     * 数据库是否可用。首帧只渲染这个状态：13 个 ViewModel 在构造期就会 `app.database.xxxDao()`
+     * 打开库（从而触发迁移），门没开就不许组 NavHost，否则失败页赶不上第一次真失败。
+     */
+    val dbState: kotlinx.coroutines.flow.StateFlow<com.zhiwo.shiguangjian.data.db.DbState> = _dbState
+
     /** 应用级协程域：页面销毁后仍需完成的轻量后台任务（如保存记录后的记忆对账） */
     val appScope = kotlinx.coroutines.CoroutineScope(
         kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO
@@ -53,30 +63,31 @@ class ZhiwoApplication : Application() {
         instance = this
         NotificationHelper.createNotificationChannels(this)
 
-        // 预热数据库：正式版无破坏性迁移兜底，迁移失败时备份原库文件后重建，
-        // 避免直接闪退（原数据保留为 .migration_backup_ 时间戳文件，可人工抢救）
+        // 数据库门：打开/迁移失败时**不再**备份后清库重建（那是"偷偷丢数据"）。
+        // 只记录原因并把状态交给界面，清库只能由用户在失败页上打字确认后发起。
         appScope.launch {
             try {
                 database.openHelper.writableDatabase
+                com.zhiwo.shiguangjian.data.db.DbGate.clearFailure(this@ZhiwoApplication)
+                com.zhiwo.shiguangjian.data.db.DbGate.noteOpened(this@ZhiwoApplication, AppDatabase.VERSION)
+                _dbState.value = com.zhiwo.shiguangjian.data.db.DbState.Ready
                 // 每日任务跨天重置（单一入口；原 CalendarViewModel Flow 副作用已删除）
                 val reset = com.zhiwo.shiguangjian.data.repository.TaskRepository(database.taskDao())
                     .resetDailyTasksForNewDay(com.zhiwo.shiguangjian.data.ai.DateFormats.nowDate())
                 if (reset > 0) android.util.Log.i("ZhiwoApp", "每日任务跨天重置 $reset 条")
                 pruneSupersededMemories()
             } catch (e: Throwable) {
-                android.util.Log.e("ZhiwoApp", "数据库打开/迁移失败，备份并重建", e)
-                try {
-                    AppDatabase.rebuild(this@ZhiwoApplication)
-                    // rebuild 造的是新实例，而本类的 database 是 by lazy —— 继续用会拿到已被删文件的旧句柄。
-                    // 唯一安全的做法是记录原因后重启进程，让下次冷启动拿干净单例。
-                    android.util.Log.w("ZhiwoApp", "已重建数据库，原库已备份，重启进程以使用新库")
-                    getSharedPreferences("db_state", MODE_PRIVATE).edit()
-                        .putString("rebuilt_at", System.currentTimeMillis().toString()).commit()
-                    android.os.Process.killProcess(android.os.Process.myPid())
-                    kotlin.system.exitProcess(10)
-                } catch (e2: Throwable) {
-                    android.util.Log.e("ZhiwoApp", "数据库重建也失败", e2)
-                }
+                android.util.Log.e("ZhiwoApp", "数据库打开/迁移失败，数据保持原样等待处理", e)
+                val info = com.zhiwo.shiguangjian.data.db.DbGate.recordFailure(
+                    this@ZhiwoApplication,
+                    com.zhiwo.shiguangjian.data.db.DbGate.lastOpenedVersion(this@ZhiwoApplication),
+                    AppDatabase.VERSION,
+                    e
+                )
+                _dbState.value = com.zhiwo.shiguangjian.data.db.DbState.UpgradeFailed(
+                    info = info,
+                    attempts = com.zhiwo.shiguangjian.data.db.DbGate.failureAttempts(this@ZhiwoApplication)
+                )
             }
         }
 

@@ -535,7 +535,9 @@ fun SettingsScreen(
                             Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                "检测到历史数据库备份（升级时曾自动恢复），原数据保存在备份文件中",
+                                info.migrationNote.ifBlank {
+                                    "检测到历史数据库备份（升级时曾自动恢复），原数据保存在备份文件中"
+                                },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.weight(1f)

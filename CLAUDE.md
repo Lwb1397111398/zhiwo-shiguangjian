@@ -27,6 +27,8 @@ bash tools/verify.sh assembleDebug
 
 `.gradle-home/` 已在 `.gitignore` 中，勿提交。
 
+**Git 与推送的事实**：git 仓库根就是 `zhiwo-android/`（上层 `work area/` 不是仓库），分支叫 `master`，远端是老板 GitHub **小号** `lwb13738132243-xiaohao` 下的私有仓库。`*.apk` 已被忽略，所以 `dist/` 里的调试包**不入库**，要给用户拿包走 GitHub Release 或本地拷贝。`docs/…/证据/**/binary/` 也加了忽略（Gradle 的 `.bin/.idx` 是垃圾，只留可读的 XML/TXT）。本机**没有 `gh` CLI、没有 SSH 密钥**，且在我这种非交互 shell 里 `git credential fill` 的 GCM 授权窗**弹不出来**（实测 180 秒超时、无任何输出）→ 推送只能靠老板手输临时令牌（classic token，勾 `repo`、设 1 天有效期、用完删），或先给他一个 SSH 公钥让他贴进 GitHub 设置。别把令牌写进 remote URL 以外的任何文件。
+
 **注意**：Gradle 构建必须在项目根目录（`zhiwo-shiguangjian/`）执行，因为 `gradlew` 和 `settings.gradle.kts` 在那里。若从 `zhiwo-android/` 子目录执行，需要先 `cd` 到父目录。
 
 ### 环境配置

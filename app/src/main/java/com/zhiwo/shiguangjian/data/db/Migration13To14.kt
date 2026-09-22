@@ -6,6 +6,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 /**
  * v13 → v14。SQL 清单来自 [Migration13To14Sql]（由 13.json 生成），这里只负责"搬家前后各按一次指印"。
  *
+ * 指纹里的 occurrence 一律只数"taskId 能对上任务"的行：孤儿行在迁移里会被 WHERE 挡掉不带过来，
+ * 基线若把它们算进去就会对不等、把用户推到失败页（那是撞红线的假警报）。
  * 指纹故意**不含** goalId / endDate —— 这两列本来就是要改值的；其余任何一项对不上都说明搬错了，
  * 直接抛异常让 Room 的整体事务回滚（库停在 v13），而不是留下半迁移状态。
  */
@@ -57,11 +59,11 @@ private data class Fingerprint(
             tasks = count(db, "SELECT COUNT(*) FROM `tasks`"),
             taskIds = count(db, "SELECT COALESCE(SUM(`id`), 0) FROM `tasks`"),
             taskContentLen = count(db, "SELECT COALESCE(SUM(LENGTH(`content`)), 0) FROM `tasks`"),
-            occurrences = count(db, "SELECT COUNT(*) FROM `task_occurrences`"),
-            occurrenceIds = count(db, "SELECT COALESCE(SUM(`id`), 0) FROM `task_occurrences`"),
-            done = count(db, "SELECT COUNT(*) FROM `task_occurrences` WHERE `status` = 'done'"),
-            notDone = count(db, "SELECT COUNT(*) FROM `task_occurrences` WHERE `status` = 'not_done'"),
-            pending = count(db, "SELECT COUNT(*) FROM `task_occurrences` WHERE `status` = 'pending'"),
+            occurrences = count(db, "SELECT COUNT(*) FROM `task_occurrences` WHERE `taskId` IN (SELECT `id` FROM `tasks`)"),
+            occurrenceIds = count(db, "SELECT COALESCE(SUM(`id`), 0) FROM `task_occurrences` WHERE `taskId` IN (SELECT `id` FROM `tasks`)"),
+            done = count(db, "SELECT COUNT(*) FROM `task_occurrences` WHERE `status` = 'done' AND `taskId` IN (SELECT `id` FROM `tasks`)"),
+            notDone = count(db, "SELECT COUNT(*) FROM `task_occurrences` WHERE `status` = 'not_done' AND `taskId` IN (SELECT `id` FROM `tasks`)"),
+            pending = count(db, "SELECT COUNT(*) FROM `task_occurrences` WHERE `status` = 'pending' AND `taskId` IN (SELECT `id` FROM `tasks`)"),
             overrides = count(db, "SELECT COUNT(*) FROM `day_overrides`")
         )
     }

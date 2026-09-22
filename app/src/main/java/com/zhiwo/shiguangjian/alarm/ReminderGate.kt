@@ -32,14 +32,15 @@ object ReminderGate {
         if (task.status.trim().lowercase() != "active") return false
         if (today.isBlank()) return false
         val day = today.take(10)
-        // 引擎的 isScheduledOn 对 adhoc 只看区间、不看"哪一天出现"（闹钟与排期页对同一件事的两套判据），
-        // 在这里补上：临时任务只在它那一天响
-        if (task.kind.trim().lowercase() == "adhoc") {
-            val scheduled = task.scheduledDate.take(10)
-            if (scheduled.isNotEmpty()) return day == scheduled && !isEffectivelyDone(occurrence, today)
-            val deadline = task.deadlineDate.take(10)
-            if (deadline.isNotEmpty() && day > deadline) return false
-        }
+        // 引擎的 isScheduledOn 对 adhoc 只看区间、不看"哪一天出现"，这里补一条附加条件；
+        // 注意**不能提前 return**：计划/目标已暂停归档、日型策略、起止区间都得照样过一遍，
+        // 否则安排页里根本没有这条任务，闹钟却会响（幽灵提醒）
+        val scheduled = task.scheduledDate.take(10)
+        if (task.kind.trim().lowercase() == "adhoc" && scheduled.isNotEmpty() && day != scheduled) return false
+        val deadline = task.deadlineDate.take(10)
+        if (task.kind.trim().lowercase() == "adhoc" && scheduled.isEmpty() &&
+            deadline.isNotEmpty() && day > deadline
+        ) return false
         val dayType = dayTypeOrWeekend(today, holidays, makeupWorkdays, overrideType)
         if (!isScheduledOn(task, today, dayType, planStatus, goalStatus)) return false
         return !isEffectivelyDone(occurrence, today)
@@ -54,6 +55,7 @@ object ReminderGate {
     ): Boolean {
         val task = db.taskDao().getTaskById(taskId) ?: return false
         val year = today.take(4).toIntOrNull()
+        if (year != null) com.zhiwo.shiguangjian.data.festival.HolidaySets.warm(ctx, year)
         // 内置公告优先，公告没覆盖那一年才读系统日历（见 HolidaySets）；两边都没有就是空集，按周末猜
         val sets: Pair<Set<String>, Set<String>> =
             if (year == null) emptySet<String>() to emptySet<String>()

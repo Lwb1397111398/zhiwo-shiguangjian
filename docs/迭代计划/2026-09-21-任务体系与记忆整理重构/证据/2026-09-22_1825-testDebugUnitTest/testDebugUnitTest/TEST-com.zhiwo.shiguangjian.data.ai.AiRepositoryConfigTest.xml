@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.ai.AiRepositoryConfigTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-09-22T10:27:21" hostname="文彬三号" time="0.862">
+  <properties/>
+  <testcase name="isConfigured is false when base url has no scheme" classname="com.zhiwo.shiguangjian.data.ai.AiRepositoryConfigTest" time="0.198"/>
+  <testcase name="isConfigured is false before configure" classname="com.zhiwo.shiguangjian.data.ai.AiRepositoryConfigTest" time="0.001"/>
+  <testcase name="isConfigured is true when retrofit service initializes" classname="com.zhiwo.shiguangjian.data.ai.AiRepositoryConfigTest" time="0.663"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -76,6 +76,13 @@ class ZhiwoApplication : Application() {
                     .resetDailyTasksForNewDay(com.zhiwo.shiguangjian.data.ai.DateFormats.nowDate())
                 if (reset > 0) android.util.Log.i("ZhiwoApp", "每日任务跨天重置 $reset 条")
                 pruneSupersededMemories()
+                // 节假日来源预热（内置公告覆盖的年份会自己跳过）：放在 IO 协程里，
+                // 绝不在主线程查 ContentProvider；下一年也提前备好，跨年不用重开 App
+                val year = com.zhiwo.shiguangjian.data.ai.DateFormats.nowDate().take(4).toIntOrNull()
+                if (year != null) {
+                    com.zhiwo.shiguangjian.data.festival.HolidaySets.warm(this@ZhiwoApplication, year)
+                    com.zhiwo.shiguangjian.data.festival.HolidaySets.warm(this@ZhiwoApplication, year + 1)
+                }
             } catch (e: Throwable) {
                 android.util.Log.e("ZhiwoApp", "数据库打开/迁移失败，数据保持原样等待处理", e)
                 val info = com.zhiwo.shiguangjian.data.db.DbGate.recordFailure(

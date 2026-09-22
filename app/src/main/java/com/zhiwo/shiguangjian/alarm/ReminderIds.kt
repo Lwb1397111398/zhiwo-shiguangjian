@@ -28,4 +28,18 @@ object ReminderIds {
         if (taskId < 0 || taskId > Int.MAX_VALUE.toLong() - 10001) return emptyList()
         return listOf((taskId + 10000).toInt(), (taskId + 10001).toInt())
     }
+
+    /**
+     * 重复闹钟的第一个触发时刻：必须落在**未来**，同时保留原本的每日/每周节律。
+     *
+     * 旧写法只加一个周期（`remindMillis + INTERVAL_DAY`）。开机恢复传进来的是任务最早的锚点
+     * （往往是几个月前、甚至 v13 迁移那天），加一天仍在过去 —— `setInexactRepeating` 收到过去的时间
+     * 会立刻补响一次，然后从那一刻起每 24 小时一格：提醒被永久挪到"开机那一刻"。
+     */
+    fun nextRepeatingTrigger(anchorMillis: Long, intervalMillis: Long, nowMillis: Long): Long {
+        require(intervalMillis > 0) { "intervalMillis 必须为正: $intervalMillis" }
+        if (anchorMillis > nowMillis) return anchorMillis
+        val periods = (nowMillis - anchorMillis + intervalMillis - 1) / intervalMillis   // 向上取整
+        return anchorMillis + periods * intervalMillis
+    }
 }

@@ -94,6 +94,15 @@ class ReminderGateTest {
         assertEquals(false, gate(t, "2027-01-02", year = 2027))
     }
 
+    @Test fun G09_临时任务当天但计划已暂停时不响_不能提前返回绕过判定() {
+        val adhoc = task(kind = "adhoc", scheduledDate = "2026-09-28", planId = 7)
+        assertEquals(false, gate(adhoc, "2026-09-28", planStatus = "paused"))
+        assertEquals(true, gate(adhoc, "2026-09-28", planStatus = "active"))
+        // workday_only 的临时任务落在休息日也不该响
+        val weekendAdhoc = task(kind = "adhoc", scheduledDate = "2026-09-26", dayPolicy = "workday_only")
+        assertEquals(false, gate(weekendAdhoc, "2026-09-26"))
+    }
+
     @Test fun G08_空日期不响() {
         assertEquals(false, gate(task(), ""))
     }

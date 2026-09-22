@@ -18,7 +18,13 @@ sel, ins = [], []
 for c in tasks_cols:
     ins.append("`%s`" % c)
     if c == "goalId":
-        sel.append("COALESCE(tasks_old.`goalId`, (SELECT g.`id` FROM `goals` g WHERE g.`recordId` = tasks_old.`parentGoalId`))")
+        # 相关子查询包一层：算出来的目标行不存在时返回 NULL，而不是把外键撞断
+        sel.append("(SELECT gg.`id` FROM `goals` gg WHERE gg.`id` = COALESCE(tasks_old.`goalId`, "
+                   "(SELECT g.`id` FROM `goals` g WHERE g.`recordId` = tasks_old.`parentGoalId`)))")
+    elif c == "recordId":
+        sel.append("(SELECT rr.`id` FROM `records` rr WHERE rr.`id` = tasks_old.`recordId`)")
+    elif c == "planId":
+        sel.append("(SELECT pp.`id` FROM `plans` pp WHERE pp.`id` = tasks_old.`planId`)")
     elif c == "endDate":
         sel.append("CASE WHEN tasks_old.`kind` = 'adhoc' AND tasks_old.`endDate` = '' "
                    "THEN substr(tasks_old.`dueDate`, 1, 10) ELSE tasks_old.`endDate` END")
@@ -83,7 +89,7 @@ A("        %s," % ks("DROP TABLE `tasks_old`"))
 A("        *TASKS_INDEXES.toTypedArray(),")
 A("        %s," % ks("DROP TABLE `task_occurrences`"))
 A("        OCCURRENCES_DDL,")
-A("        %s," % ks(insert_occ))
+A("        %s," % ks(insert_occ + " WHERE `taskId` IN (SELECT `id` FROM `tasks`)"))
 A("        %s," % ks("DROP TABLE `task_occurrences_bak`"))
 A("        *OCCURRENCES_INDEXES.toTypedArray()")
 A("    )")

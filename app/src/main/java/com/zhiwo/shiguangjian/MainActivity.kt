@@ -39,6 +39,19 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { results ->
         results.entries.forEach { (permission, granted) ->
+            val calendarPermission = permission == Manifest.permission.READ_CALENDAR ||
+                permission == Manifest.permission.WRITE_CALENDAR
+            if (granted && calendarPermission) {
+                // 刚拿到权限：丢掉"没权限时读回来的空结果"，重新预热一次节假日来源
+                com.zhiwo.shiguangjian.data.festival.HolidaySets.invalidate()
+                (application as ZhiwoApplication).appScope.launch {
+                    val y = com.zhiwo.shiguangjian.data.ai.DateFormats.nowDate().take(4).toIntOrNull()
+                    if (y != null) {
+                        com.zhiwo.shiguangjian.data.festival.HolidaySets.warm(this@MainActivity, y)
+                        com.zhiwo.shiguangjian.data.festival.HolidaySets.warm(this@MainActivity, y + 1)
+                    }
+                }
+            }
             if (!granted) {
                 when (permission) {
                     Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR -> {

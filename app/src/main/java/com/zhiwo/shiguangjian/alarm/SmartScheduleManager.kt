@@ -76,12 +76,9 @@ object SmartScheduleManager {
             "daily" -> {
                 // 每日重复：从今天开始每天同一时间提醒
                 val remindMillis = startMillis - REMIND_MINUTES_BEFORE * 60 * 1000
-                val firstTrigger = if (remindMillis > System.currentTimeMillis()) {
-                    remindMillis
-                } else {
-                    // 今天时间已过，从明天开始
-                    remindMillis + AlarmManager.INTERVAL_DAY
-                }
+                val firstTrigger = ReminderIds.nextRepeatingTrigger(
+                    remindMillis, AlarmManager.INTERVAL_DAY, System.currentTimeMillis()
+                )
                 AlarmScheduler.scheduleRepeatingTaskAlarm(
                     context = context,
                     alarmId = alarmId,
@@ -94,12 +91,9 @@ object SmartScheduleManager {
             "weekly" -> {
                 // 每周重复：每周同一时间提醒
                 val remindMillis = startMillis - REMIND_MINUTES_BEFORE * 60 * 1000
-                val firstTrigger = if (remindMillis > System.currentTimeMillis()) {
-                    remindMillis
-                } else {
-                    // 本周时间已过，从下周开始
-                    remindMillis + AlarmManager.INTERVAL_DAY * 7
-                }
+                val firstTrigger = ReminderIds.nextRepeatingTrigger(
+                    remindMillis, AlarmManager.INTERVAL_DAY * 7, System.currentTimeMillis()
+                )
                 AlarmScheduler.scheduleRepeatingTaskAlarm(
                     context = context,
                     alarmId = alarmId,

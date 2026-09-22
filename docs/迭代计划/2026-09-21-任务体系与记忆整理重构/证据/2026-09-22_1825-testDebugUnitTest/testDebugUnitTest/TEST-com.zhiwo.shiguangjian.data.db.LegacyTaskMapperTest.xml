@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" tests="24" skipped="0" failures="0" errors="0" timestamp="2026-09-22T10:27:22" hostname="文彬三号" time="0.064">
+  <properties/>
+  <testcase name="M08_未知类型一律回退临时并记问题" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.029"/>
+  <testcase name="M15_未完成的活跃任务状态为active" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.001"/>
+  <testcase name="M08b_大小写与空格变体按已知类型处理且不报问题" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.002"/>
+  <testcase name="M12_未完成但有每日完成日期视为脏数据并记问题" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.001"/>
+  <testcase name="M18_目标型任务没有parentGoalId时用自身记录溯源" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.0"/>
+  <testcase name="M20_映射函数对同一输入两次结果一致" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.004"/>
+  <testcase name="M03_weekly周日为ISO_7" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.001"/>
+  <testcase name="M02_weekly按dueDate的星期生成custom且起始日不早于迁移日" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.001"/>
+  <testcase name="M09_每日任务已打卡只产一条历史打卡" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.001"/>
+  <testcase name="M06_once只有日期时提醒为空" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.001"/>
+  <testcase name="M16_parentGoalId命中映射表才挂目标" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.001"/>
+  <testcase name="M17_孤儿parentGoalId不挂目标也不崩" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.001"/>
+  <testcase name="M22_时间解析容忍缺分与非法值" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.002"/>
+  <testcase name="M10_无每日完成日期时用completedAt否则用今天" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.001"/>
+  <testcase name="M13_真正完成同时归档并保留打卡" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.0"/>
+  <testcase name="M19_目标型任务两者皆无时目标为空" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.001"/>
+  <testcase name="M11_completedAt是垃圾串时回退迁移日不抛" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.002"/>
+  <testcase name="M23_日期解析只认合法日期" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.001"/>
+  <testcase name="M04_weekly缺日期时退化为每天并记问题" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.001"/>
+  <testcase name="M01_daily映射为每日固定且每天重复" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.001"/>
+  <testcase name="M05_once带完整时间串时只取日期与提醒" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.002"/>
+  <testcase name="M07_once无日期则不指定出现日" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.0"/>
+  <testcase name="M21_目标状态按记录类别还原" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.0"/>
+  <testcase name="M14_只勾了真正完成但未打卡也归档且无打卡" classname="com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

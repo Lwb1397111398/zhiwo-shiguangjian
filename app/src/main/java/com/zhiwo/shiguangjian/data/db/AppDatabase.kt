@@ -254,9 +254,12 @@ abstract class AppDatabase : RoomDatabase() {
          * 迁移失败时的抢救：把主库 + -wal + -shm 三件套改名备份后重建。
          * 备份落在应用外部文件目录（正式版从 databases/ 目录里取不出来，等于没有备份）。
          */
+        @Synchronized
         fun rebuild(context: Context): AppDatabase {
-            synchronized(this) {
-                val dbFile = context.applicationContext.getDatabasePath(DATABASE_NAME)
+            // 检查/取走 rebuild 标记与真正清库必须在同一把锁里：
+            // 门的协程与 BootReceiver 可能同时进来，跑两遍会把刚建好的新库再删一次，
+            // 两个调用方各持一个实例、其中一个指向已删除的文件，写入静默丢失
+            val dbFile = context.applicationContext.getDatabasePath(DATABASE_NAME)
                 if (dbFile.exists()) {
                     try {
                         val raw = android.database.sqlite.SQLiteDatabase.openDatabase(
@@ -277,26 +280,28 @@ abstract class AppDatabase : RoomDatabase() {
                         java.io.File(dbFile.parentFile, "$DATABASE_NAME$suffix")
                             .takeIf { it.exists() }?.copyTo(java.io.File(destDir, "$DATABASE_NAME$suffix"), overwrite = true)
                     }
-                    dbFile.delete()
+                    if (!dbFile.delete()) {
+                        // 删不掉就不许说"已重建"：否则设置页显示成功、下次打开还是那个半迁移的库
+                        throw IllegalStateException("旧数据库文件删不掉，重建未完成：${dbFile.absolutePath}")
+                    }
                     java.io.File(dbFile.parentFile, "$DATABASE_NAME-wal").delete()
                     java.io.File(dbFile.parentFile, "$DATABASE_NAME-shm").delete()
                     DbGate.markRebuilt(context.applicationContext, destDir.absolutePath)
                 } else {
                     DbGate.markRebuilt(context.applicationContext, "（原来就没有数据库文件）")
                 }
-                INSTANCE = null
-                return getInstance(context)
-            }
+            INSTANCE = null
+            return getInstance(context)
         }
 
-        fun getInstance(context: Context): AppDatabase {
-            // 冷启动只有一条路会清库：用户在失败页上打字确认后留下的标记（见 DbGate）。
+        fun getInstance(context: Context): AppDatabase = synchronized(this) {
+            // 冷启动只有一条路会清库：用户在失败页上打字确认后留下的标记（见 DbGate）；
             // 迁移异常本身绝不再触发清库 —— 以前是 catch 完直接 rebuild，用户只会看见"记录全空了"。
-            if (DbGate.rebuildRequested(context.applicationContext)) {
+            // 检查标记与清库放在同一把锁里：门的协程和 BootReceiver 可能同时进来，跑两遍会把刚建好的新库再删一次。
+            if (INSTANCE == null && DbGate.rebuildRequested(context.applicationContext)) {
                 DbGate.takeRebuildRequest(context.applicationContext)
-                return rebuild(context)
-            }
-            return INSTANCE ?: synchronized(this) {
+                rebuild(context)
+            } else {
                 INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,

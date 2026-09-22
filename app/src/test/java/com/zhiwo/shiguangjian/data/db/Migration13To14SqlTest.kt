@@ -78,4 +78,15 @@ class Migration13To14SqlTest {
         assertTrue(s.isNotEmpty())
         assertTrue(s.none { it.isBlank() })
     }
+
+    @Test fun M10_历史脏行不许把升级炸掉() {
+        // 迁移事务里 PRAGMA foreign_keys 是开的：一条孤儿外键就能让 INSERT 抛异常，
+        // 结果是用户被推到失败页、唯一出路变成"打字确认清库" —— 撞红线
+        val insertTasks = s.first { it.startsWith("INSERT INTO `tasks`") }
+        assertTrue("recordId 要洗成 NULL 而不是撞外键", insertTasks.contains("(SELECT rr.`id` FROM `records` rr WHERE rr.`id` = tasks_old.`recordId`)"))
+        assertTrue("planId 同理", insertTasks.contains("(SELECT pp.`id` FROM `plans` pp WHERE pp.`id` = tasks_old.`planId`)"))
+        assertTrue("goalId 回填后还要验证目标行真的存在", insertTasks.contains("(SELECT gg.`id` FROM `goals` gg WHERE gg.`id` = COALESCE("))
+        val insertOcc = s.first { it.startsWith("INSERT INTO `task_occurrences`") }
+        assertTrue("打卡行要跳过指向不存在任务的孤儿", insertOcc.contains("WHERE `taskId` IN (SELECT `id` FROM `tasks`)"))
+    }
 }

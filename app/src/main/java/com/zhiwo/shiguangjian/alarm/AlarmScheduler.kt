@@ -266,23 +266,4 @@ object AlarmScheduler {
         Log.d("AlarmScheduler", "任务闹钟已取消: id=$alarmId")
     }
 
-    fun cancelAllAlarms(context: Context) {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: run {
-            Log.e("AlarmScheduler", "无法获取 AlarmManager，跳过取消闹钟")
-            return
-        }
-        listOf(
-            AlarmIds.MORNING_TASKS,
-            AlarmIds.EVENING_TASKS,
-            AlarmIds.DAILY_REVIEW,
-            AlarmIds.WEEKLY_REVIEW
-        ).forEach { id ->
-            val intent = Intent(context, AlarmReceiver::class.java)
-            val pendingIntent = PendingIntent.getBroadcast(
-                context, id, intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            alarmManager.cancel(pendingIntent)
-        }
-    }
 }

@@ -23,7 +23,6 @@ import com.zhiwo.shiguangjian.data.repository.TaskRepository
 import com.zhiwo.shiguangjian.data.repository.MemoryRepository
 import com.zhiwo.shiguangjian.data.repository.SecureSettingsRepository
 import com.zhiwo.shiguangjian.data.repository.SettingsRepository
-import com.zhiwo.shiguangjian.data.tasks.getTaskDisplayDate as taskDisplayDate
 import com.zhiwo.shiguangjian.data.tasks.isTaskEffectivelyCompleted as taskIsEffectivelyCompleted
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -110,42 +109,10 @@ class RecordListViewModel(application: Application) : AndroidViewModel(applicati
 
     // ========== 安排 Tab 数据 ==========
 
-    /** 今日待办记录（category=todo 且有未过期未完成的任务） */
-    val todayDueTodoRecords: StateFlow<List<RecordEntity>> = combine(
-        _records, _tasks
-    ) { records, tasks ->
-        val today = DateFormats.nowDate()
-        records.filter { r ->
-            if (r.category != "todo") return@filter false
-            val recordTasks = tasks.filter { it.recordId == r.id }
-            if (recordTasks.isEmpty()) return@filter true
-            // 有未过期且未完成的任务（dueDate 为空表示无截止日期，保留；dueDate >= today 表示未过期）
-            recordTasks.any { t ->
-                !isTaskEffectivelyCompleted(t, today) &&
-                (t.dueDate.isBlank() || t.dueDate.take(10) >= today)
-            }
-        }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-
-    /** 目标记录 */
-    val goalRecords: StateFlow<List<RecordEntity>> = _records.map { records ->
-        records.filter { it.category == "goal" }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-
-    /** 当天已完成记录 */
-    val completedRecords: StateFlow<List<RecordEntity>> = _records.map { records ->
-        val today = DateFormats.nowDate()
-        records.filter { it.category == "completed" && it.updatedAt.startsWith(today) }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-
     // ========== 任务操作 ==========
 
     fun isTaskEffectivelyCompleted(task: TaskEntity, today: String = DateFormats.nowDate()): Boolean {
         return taskIsEffectivelyCompleted(task, today)
-    }
-
-    fun getTaskDisplayDate(task: TaskEntity): String {
-        return taskDisplayDate(task)
     }
 
     fun completeTask(taskId: Long) {
@@ -186,61 +153,6 @@ class RecordListViewModel(application: Application) : AndroidViewModel(applicati
             }
         } catch (e: Throwable) {
             Log.e("RecordListVM", "checkAndMoveCompleted failed", e)
-        }
-    }
-
-    fun completeGoal(goalRecordId: Long) {
-        viewModelScope.launch {
-            val goalRecord = recordRepo.getRecordById(goalRecordId) ?: return@launch
-            val now = DateFormats.nowDate()
-            // 完成关联到此目标的待办任务
-            val linkedTasks = taskRepo.getTasksByParentGoalId(goalRecordId).first()
-            linkedTasks.forEach { task ->
-                bridge.check(task, now, DateFormats.nowDateTimeIso())
-                if (task.kind == "daily" || task.kind == "blank") bridge.archive(task)
-            }
-            // 完成记录自身的任务
-            val recordTasks = taskRepo.getTasksByRecordId(goalRecordId).first()
-            recordTasks.forEach { task ->
-                if (!task.isCompleted) {
-                    if (task.taskType == "daily") {
-                        taskRepo.updateTask(task.copy(isCompleted = true, completedAt = now, dailyCompletionDate = now, isPermanentlyCompleted = true))
-                    } else {
-                        taskRepo.updateTask(task.copy(isCompleted = true, completedAt = now))
-                    }
-                }
-            }
-            // 取消关联闹钟
-            (linkedTasks + recordTasks).forEach { SmartScheduleManager.cancelAlarm(app, it.id, it.calendarEventId) }
-            // 移动记录到已完成
-            recordRepo.updateRecord(goalRecord.copy(category = "completed"))
-            // 目标完成的事实同步给记忆（确定性入口，不靠 AI 脑补"达成"）
-            notifyGoalOutcome(goalRecord.id, goalRecord.title, achieved = true)
-        }
-    }
-
-    /**
-     * 放弃目标：记录移出目标列表（归入 completed），任务与闹钟一并收尾，
-     * 并把"已放弃"同步给记忆——推翻旧的"正在准备"类记忆。
-     */
-    fun abandonGoal(goalRecordId: Long) {
-        viewModelScope.launch {
-            try {
-                val goalRecord = recordRepo.getRecordById(goalRecordId) ?: return@launch
-                val now = DateFormats.nowDate()
-                val linkedTasks = taskRepo.getTasksByParentGoalId(goalRecordId).first()
-                val recordTasks = taskRepo.getTasksByRecordId(goalRecordId).first()
-                (linkedTasks + recordTasks).forEach { task ->
-                    if (!task.isCompleted) {
-                        taskRepo.updateTask(task.copy(isCompleted = true, completedAt = now))
-                    }
-                    SmartScheduleManager.cancelAlarm(app, task.id, task.calendarEventId)
-                }
-                recordRepo.updateRecord(goalRecord.copy(category = "completed"))
-                notifyGoalOutcome(goalRecord.id, goalRecord.title, achieved = false)
-            } catch (e: Throwable) {
-                Log.e("RecordListVM", "abandonGoal failed", e)
-            }
         }
     }
 

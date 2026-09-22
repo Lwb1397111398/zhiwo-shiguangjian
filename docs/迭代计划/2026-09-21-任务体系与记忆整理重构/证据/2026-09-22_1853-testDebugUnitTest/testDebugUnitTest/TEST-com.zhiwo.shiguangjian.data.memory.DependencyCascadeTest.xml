@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.memory.DependencyCascadeTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-09-22T10:54:30" hostname="文彬三号" time="0.015">
+  <properties/>
+  <testcase name="MFDC07_撤销忽略恢复被级联取消的下游" classname="com.zhiwo.shiguangjian.data.memory.DependencyCascadeTest" time="0.01"/>
+  <testcase name="MFDC05_无依赖的条目只改自己" classname="com.zhiwo.shiguangjian.data.memory.DependencyCascadeTest" time="0.001"/>
+  <testcase name="MFDC08_直接下游与全部下游分别可查" classname="com.zhiwo.shiguangjian.data.memory.DependencyCascadeTest" time="0.0"/>
+  <testcase name="MFDC09_未知根返回空不抛异常" classname="com.zhiwo.shiguangjian.data.memory.DependencyCascadeTest" time="0.0"/>
+  <testcase name="MFDC01_单层链_下游被级联取消" classname="com.zhiwo.shiguangjian.data.memory.DependencyCascadeTest" time="0.0"/>
+  <testcase name="MFDC04_多父依赖必须全部父被取消才级联" classname="com.zhiwo.shiguangjian.data.memory.DependencyCascadeTest" time="0.0"/>
+  <testcase name="MFDC02_三层链_全部下游被取消" classname="com.zhiwo.shiguangjian.data.memory.DependencyCascadeTest" time="0.0"/>
+  <testcase name="MFDC06_父不存在的条目保守不级联" classname="com.zhiwo.shiguangjian.data.memory.DependencyCascadeTest" time="0.001"/>
+  <testcase name="MFDC03_有环也必然收敛不死循环" classname="com.zhiwo.shiguangjian.data.memory.DependencyCascadeTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

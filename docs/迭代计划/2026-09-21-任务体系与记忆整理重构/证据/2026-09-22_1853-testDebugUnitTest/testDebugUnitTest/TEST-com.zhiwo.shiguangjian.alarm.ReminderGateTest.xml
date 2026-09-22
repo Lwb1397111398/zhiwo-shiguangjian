@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.alarm.ReminderGateTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-09-22T10:54:29" hostname="文彬三号" time="0.152">
+  <properties/>
+  <testcase name="G01_暂停与归档的任务不响" classname="com.zhiwo.shiguangjian.alarm.ReminderGateTest" time="0.135"/>
+  <testcase name="G09_临时任务当天但计划已暂停时不响_不能提前返回绕过判定" classname="com.zhiwo.shiguangjian.alarm.ReminderGateTest" time="0.002"/>
+  <testcase name="G07_没有节假日数据的年份按周末猜而不是集体失响" classname="com.zhiwo.shiguangjian.alarm.ReminderGateTest" time="0.003"/>
+  <testcase name="G04_今天已经勾过就不催_记了没做仍然催" classname="com.zhiwo.shiguangjian.alarm.ReminderGateTest" time="0.002"/>
+  <testcase name="G02_只在工作日做的任务周六不响周一响" classname="com.zhiwo.shiguangjian.alarm.ReminderGateTest" time="0.001"/>
+  <testcase name="G08_空日期不响" classname="com.zhiwo.shiguangjian.alarm.ReminderGateTest" time="0.0"/>
+  <testcase name="G06_所属计划暂停时不响" classname="com.zhiwo.shiguangjian.alarm.ReminderGateTest" time="0.002"/>
+  <testcase name="G05_临时任务只在它那天响" classname="com.zhiwo.shiguangjian.alarm.ReminderGateTest" time="0.001"/>
+  <testcase name="G03_手动标了班就按班算_压过周末判定" classname="com.zhiwo.shiguangjian.alarm.ReminderGateTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

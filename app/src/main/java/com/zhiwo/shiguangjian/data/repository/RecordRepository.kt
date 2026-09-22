@@ -45,19 +45,6 @@ class RecordRepository(
         }
     }
 
-    /** 删记录且连任务一起删（只有用户显式选择"连同任务删除"时才用） */
-    suspend fun deleteRecord(id: Long) {
-        database.withTransaction {
-            // 先手动删除关联数据（CASCADE 作为兜底），再删除记录本身
-            taskDao.deleteTasksByRecordId(id)
-            tagDao.deleteRecordTagsByRecordId(id)
-            keyInfoDao.deleteKeyInfosByRecordId(id)
-            recordDao.deleteRecordById(id)
-            // 清理不再被任何记录引用的孤立标签
-            tagDao.deleteOrphanTags()
-        }
-    }
-
     suspend fun getTasksForRecord(recordId: Long): List<TaskEntity> =
         taskDao.getTasksByRecordId(recordId).first()
 

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.db.Migration13To14SqlTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-09-22T09:40:53" hostname="文彬三号" time="0.016">
+  <properties/>
+  <testcase name="M09_语句清单不许掺空语句" classname="com.zhiwo.shiguangjian.data.db.Migration13To14SqlTest" time="0.005"/>
+  <testcase name="M05_回填goalId与adhoc期限都在INSERT里做掉" classname="com.zhiwo.shiguangjian.data.db.Migration13To14SqlTest" time="0.0"/>
+  <testcase name="M02_快照表不能带外键约束" classname="com.zhiwo.shiguangjian.data.db.Migration13To14SqlTest" time="0.001"/>
+  <testcase name="M06_索引必须在改名之后建且数量与实体一致" classname="com.zhiwo.shiguangjian.data.db.Migration13To14SqlTest" time="0.001"/>
+  <testcase name="M07_只用低版本SQLite也有的语法" classname="com.zhiwo.shiguangjian.data.db.Migration13To14SqlTest" time="0.004"/>
+  <testcase name="M01_快照子表必须排在一切破坏性动作之前" classname="com.zhiwo.shiguangjian.data.db.Migration13To14SqlTest" time="0.002"/>
+  <testcase name="M03_回填必须显式带id否则自增序号会重排" classname="com.zhiwo.shiguangjian.data.db.Migration13To14SqlTest" time="0.001"/>
+  <testcase name="M04_recordId外键改成SET_NULL且不再有CASCADE" classname="com.zhiwo.shiguangjian.data.db.Migration13To14SqlTest" time="0.0"/>
+  <testcase name="M08_列清单与13json一致" classname="com.zhiwo.shiguangjian.data.db.Migration13To14SqlTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

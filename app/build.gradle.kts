@@ -12,8 +12,10 @@ android {
         applicationId = "com.zhiwo.shiguangjian"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        // 触发数据库升级的是 AppDatabase.VERSION，不是这里的号；
+        // 这里只是让覆盖安装时能认出"装了新包"
+        versionName = "1.1.0-v14"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

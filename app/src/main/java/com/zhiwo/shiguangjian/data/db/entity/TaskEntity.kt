@@ -9,8 +9,9 @@ import androidx.room.PrimaryKey
  * 任务定义。"今天做没做"不在这张表上，而在 task_occurrences（一天一条）。
  *
  * v13 起新老字段并存：taskType/isCompleted/dailyCompletionDate/isPermanentlyCompleted/parentGoalId
- * 是为"老 UI 照常工作 + 闹钟与开机恢复仍按老列取数"保留的过渡字段，只允许 TaskWriteBridge 写，
- * v14 一并删除。新字段才是真值。
+ * 是为"老 UI 照常工作"保留的过渡字段，只允许 TaskWriteBridge 写。
+ * v14（FK 改 SET_NULL + 回填 goalId）没有删它们：全库读者还没清完，删列排在下游改造之后（见计划 v6 §4）。
+ * 新字段才是真值。
  */
 @Entity(
     tableName = "tasks",
@@ -19,7 +20,8 @@ import androidx.room.PrimaryKey
             entity = RecordEntity::class,
             parentColumns = ["id"],
             childColumns = ["recordId"],
-            onDelete = ForeignKey.CASCADE
+            // v14 起改为 SET_NULL：删掉一条记录不该把它派生的任务一起带走（以前靠 deleteRecordKeepingTasks 绕）
+            onDelete = ForeignKey.SET_NULL
         ),
         ForeignKey(
             entity = GoalEntity::class,

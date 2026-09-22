@@ -44,20 +44,33 @@ touch app/build/.run-start 2>/dev/null || (mkdir -p app/build && touch app/build
 
 mkdir -p "$EVIDENCE"
 
-# 3) Room schema：KSP 在源码内容未变时会 UP-TO-DATE 而不重新导出 → 缺产物就强制重跑一次
-if [ -z "$(find app/schemas -name '*.json' 2>/dev/null | head -1)" ]; then
-  echo "-- 镜像内无 schema 产物，强制重跑 KSP --"
+# 3) Room schema：必须拿到"当前 AppDatabase.VERSION 对应的那一份" json。
+#    旧判据是"一个 json 都没有才重跑"——版本从 13 升到 14 时镜像里还留着 13.json，
+#    于是 KSP 没重跑也照样通过，v14 的 schema 根本没生成（自己踩过，别再踩）
+DB_SRC="app/src/main/java/com/zhiwo/shiguangjian/data/db/AppDatabase.kt"
+SCHEMA_DIR="app/schemas/com.zhiwo.shiguangjian.data.db.AppDatabase"
+EXPECT_V=$(grep -m1 'const val VERSION = ' "$REAL/$DB_SRC" | tr -dc '0-9')
+if [ -z "$EXPECT_V" ]; then echo "!! 读不到 AppDatabase.VERSION（改判据前先修这里）" >&2; exit 1; fi
+if [ ! -f "$SCHEMA_DIR/$EXPECT_V.json" ]; then
+  echo "-- 缺 $EXPECT_V.json（Room 没为当前版本导出 schema），强制重跑 KSP --"
+  rm -rf app/build/generated/sqldelight 2>/dev/null || true
   ./gradlew --no-daemon --max-workers=1 -g "$GRADLE_HOME" :app:kspDebugKotlin --rerun-tasks -q
 fi
+if [ ! -f "$SCHEMA_DIR/$EXPECT_V.json" ]; then
+  echo "!! 强制重跑后仍然没有 $EXPECT_V.json —— schema 不可信，判失败" >&2
+  exit 1
+fi
 if [ -d "app/schemas" ]; then
-  powershell -NoProfile -Command "robocopy '$MIRROR_WIN\app\schemas' '$REAL_WIN\app\schemas' /E /XF *.tmp /NFL /NDL /NJH /NP | Out-Null; exit 0" >/dev/null
-  # 已提交的 schema 内容被改动 = SCHEMA DRIFT（12.json 永远不该变），只允许出现新文件
-  if ! diff -rq "$MIRROR/app/schemas" "$REAL/app/schemas" >/dev/null 2>&1; then
-    echo "!! SCHEMA DRIFT：Room 生成的 schema 与已提交 schema 不一致（只允许出现新文件）" >&2
-    diff -rq "$MIRROR/app/schemas" "$REAL/app/schemas" | tee "$EVIDENCE/schema_drift.txt" || true
+  # 先比对再回传：以前是"先把镜像 schema 拷回真目录、再拿两份自己比自己"，结构上永远不会 FAIL（假门）
+  DRIFT=$(diff -rq "$MIRROR/app/schemas" "$REAL/app/schemas" 2>/dev/null | grep -v "Only in .*zhiwo-build" || true)
+  if [ -n "$DRIFT" ]; then
+    echo "!! SCHEMA DRIFT：Room 重新生成的 schema 与已提交内容不一致（只允许新增版本号文件）" >&2
+    echo "$DRIFT" | tee "$EVIDENCE/schema_drift.txt" || true
     exit 1
   fi
-  echo "OK schemas 一致"
+  powershell -NoProfile -Command "robocopy '$MIRROR_WIN\app\schemas' '$REAL_WIN\app\schemas' /E /XF *.tmp /NFL /NDL /NJH /NP | Out-Null; exit 0" >/dev/null
+  NEWFILES=$(diff -rq "$MIRROR/app/schemas" "$REAL/app/schemas" 2>/dev/null | grep -c "Only in .*zhiwo-build" || true)
+  echo "OK schemas 一致（新增 $NEWFILES 份未入库的 schema 已回传，记得提交）"
 fi
 
 # 4) APK 回传

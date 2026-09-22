@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.settings.ScheduleDisplayPrefsTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-09-22T09:40:54" hostname="文彬三号" time="0.019">
+  <properties/>
+  <testcase name="P06_重复段名只保留一次" classname="com.zhiwo.shiguangjian.data.settings.ScheduleDisplayPrefsTest" time="0.007"/>
+  <testcase name="P01_编码解码往返一致" classname="com.zhiwo.shiguangjian.data.settings.ScheduleDisplayPrefsTest" time="0.003"/>
+  <testcase name="P04_未知段名被丢弃" classname="com.zhiwo.shiguangjian.data.settings.ScheduleDisplayPrefsTest" time="0.001"/>
+  <testcase name="P08_visibleOrder与hidden一致" classname="com.zhiwo.shiguangjian.data.settings.ScheduleDisplayPrefsTest" time="0.0"/>
+  <testcase name="P05_全部隐藏时回退为不隐藏防止页面空白" classname="com.zhiwo.shiguangjian.data.settings.ScheduleDisplayPrefsTest" time="0.003"/>
+  <testcase name="P03_缺失的段追加到末尾" classname="com.zhiwo.shiguangjian.data.settings.ScheduleDisplayPrefsTest" time="0.003"/>
+  <testcase name="P02_空值与坏JSON回退默认" classname="com.zhiwo.shiguangjian.data.settings.ScheduleDisplayPrefsTest" time="0.0"/>
+  <testcase name="P07_移动顺序到边界外不动" classname="com.zhiwo.shiguangjian.data.settings.ScheduleDisplayPrefsTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

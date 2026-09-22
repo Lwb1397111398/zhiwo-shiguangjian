@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.profile.ApplyAiProfileUpdateTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-09-22T09:40:54" hostname="文彬三号" time="0.032">
+  <properties/>
+  <testcase name="flag on empty blocklist merges" classname="com.zhiwo.shiguangjian.data.profile.ApplyAiProfileUpdateTest" time="0.027"/>
+  <testcase name="flag off returns current unchanged" classname="com.zhiwo.shiguangjian.data.profile.ApplyAiProfileUpdateTest" time="0.0"/>
+  <testcase name="flag on blocked items excluded from merge" classname="com.zhiwo.shiguangjian.data.profile.ApplyAiProfileUpdateTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

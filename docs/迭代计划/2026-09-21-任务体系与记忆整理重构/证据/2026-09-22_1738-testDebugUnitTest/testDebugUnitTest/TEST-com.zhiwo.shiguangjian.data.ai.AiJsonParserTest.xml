@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.ai.AiJsonParserTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-09-22T09:40:53" hostname="文彬三号" time="0.128">
+  <properties/>
+  <testcase name="parseObject reads plain json object" classname="com.zhiwo.shiguangjian.data.ai.AiJsonParserTest" time="0.097"/>
+  <testcase name="parseObject reads json object from markdown fence" classname="com.zhiwo.shiguangjian.data.ai.AiJsonParserTest" time="0.02"/>
+  <testcase name="parseObject rejects invalid json" classname="com.zhiwo.shiguangjian.data.ai.AiJsonParserTest" time="0.01"/>
+  <testcase name="parseArray reads json array from markdown fence" classname="com.zhiwo.shiguangjian.data.ai.AiJsonParserTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

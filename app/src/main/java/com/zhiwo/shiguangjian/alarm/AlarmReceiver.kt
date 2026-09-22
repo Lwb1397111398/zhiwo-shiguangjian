@@ -35,7 +35,7 @@ class AlarmReceiver : BroadcastReceiver() {
         scope.launch {
             try {
                 val should = try {
-                    ReminderGate.shouldRemindNow(app.database, taskId, DateFormats.nowDate())
+                    ReminderGate.shouldRemindNow(context, app.database, taskId, DateFormats.nowDate())
                 } catch (e: Exception) {
                     Log.e("AlarmReceiver", "提醒前判定失败，按原样提醒: taskId=$taskId ${e.message}", e)
                     true

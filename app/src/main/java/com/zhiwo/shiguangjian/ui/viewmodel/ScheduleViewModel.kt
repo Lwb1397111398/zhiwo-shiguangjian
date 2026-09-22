@@ -185,13 +185,17 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun resolverFor(date: String, overrideByDate: Map<String, String>): DayType? =
-        dayTypeOrWeekend(
+    private fun resolverFor(date: String, overrideByDate: Map<String, String>): DayType? {
+        val year = yearOf(date)
+        // 内置公告优先；公告没覆盖这一年才去读系统日历（每年只查一次，结果缓存）
+        val (holidays, makeup) = com.zhiwo.shiguangjian.data.festival.HolidaySets.of(getApplication(), year)
+        return dayTypeOrWeekend(
             date,
-            HolidayCalendar.holidaysOf(yearOf(date)),
-            HolidayCalendar.makeupWorkdaysOf(yearOf(date)),
+            holidays,
+            makeup,
             overrideByDate[date]
         )
+    }
 
     /** 日型判定唯一入口：该年没有节假日数据时按周末折算，并用 holidayWarning 明确告知 */
     private fun weekendOnly(date: String): DayType = dayTypeOrWeekend(date, emptySet(), emptySet(), null)

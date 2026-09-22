@@ -140,6 +140,25 @@ class InputViewModel(application: Application) : AndroidViewModel(application) {
                             )
                         )
 
+                        // AI 把这条记录判成「目标」时，当场补一条 goals 行并让任务挂上 goalId。
+                        // 以前只写老的 parentGoalId、goalId 恒为空 → 目标页看不见这些任务，
+                        // v14 的回填也只能救回"goals 里恰好有对应行"的那部分
+                        val goalIdForRecord = if (correctedCategory == "goal") {
+                            app.database.goalDao().insert(
+                                com.zhiwo.shiguangjian.data.db.entity.GoalEntity(
+                                    title = safeTitle,
+                                    description = analysis.summary,
+                                    startDate = now.take(10),
+                                    targetDate = "",
+                                    status = "active",
+                                    recordId = id,
+                                    sortOrder = 0,
+                                    createdAt = now,
+                                    updatedAt = now
+                                )
+                            )
+                        } else null
+
                         if (analysis.keyInfo.isNotEmpty()) {
                             app.database.keyInfoDao().insertKeyInfos(
                                 analysis.keyInfo.map { KeyInfoEntity(recordId = id, content = it) }
@@ -166,12 +185,13 @@ class InputViewModel(application: Application) : AndroidViewModel(application) {
                                         dailyCompletionDate = null, isPermanentlyCompleted = false,
                                         calendarEventId = null, createdAt = now
                                     ),
-                                    goalIdOf = { null },
+                                    goalIdOf = { goalIdForRecord },
                                     today = DateFormats.nowDate()
                                 )
                                 val taskId = taskRepo.insertTask(
                                     TaskEntity(
                                         recordId = id,
+                                        goalId = goalIdForRecord,
                                         parentGoalId = if (correctedCategory == "goal") id else null,
                                         content = task.content,
                                         dueDate = task.dueDate,

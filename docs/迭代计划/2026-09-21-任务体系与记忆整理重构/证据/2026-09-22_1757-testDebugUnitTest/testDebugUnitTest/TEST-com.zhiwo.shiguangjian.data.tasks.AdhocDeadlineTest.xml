@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.tasks.AdhocDeadlineTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-09-22T09:59:46" hostname="文彬三号" time="0.029">
+  <properties/>
+  <testcase name="D05_期限当天不算过期次日才过期" classname="com.zhiwo.shiguangjian.data.tasks.AdhocDeadlineTest" time="0.002"/>
+  <testcase name="D01_只有老dueDate时期限取日期部分" classname="com.zhiwo.shiguangjian.data.tasks.AdhocDeadlineTest" time="0.001"/>
+  <testcase name="D03_两个都空就是没有期限" classname="com.zhiwo.shiguangjian.data.tasks.AdhocDeadlineTest" time="0.001"/>
+  <testcase name="D08_引擎仍把只有老dueDate的临时任务判为过期" classname="com.zhiwo.shiguangjian.data.tasks.AdhocDeadlineTest" time="0.021"/>
+  <testcase name="D07_既无期限又无出现日则永不过期" classname="com.zhiwo.shiguangjian.data.tasks.AdhocDeadlineTest" time="0.0"/>
+  <testcase name="D06_无期限的临时任务过了出现日就算过期" classname="com.zhiwo.shiguangjian.data.tasks.AdhocDeadlineTest" time="0.0"/>
+  <testcase name="D09_期限搬进endDate之后判定完全一致" classname="com.zhiwo.shiguangjian.data.tasks.AdhocDeadlineTest" time="0.001"/>
+  <testcase name="D02_两个都有值时以endDate为准" classname="com.zhiwo.shiguangjian.data.tasks.AdhocDeadlineTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

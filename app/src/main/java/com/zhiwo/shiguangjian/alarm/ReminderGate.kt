@@ -46,16 +46,26 @@ object ReminderGate {
     }
 
     /** 从库里凑齐判定材料；任务查不到时返回 false（任务已不存在，不该再响） */
-    suspend fun shouldRemindNow(db: AppDatabase, taskId: Long, today: String): Boolean {
+    suspend fun shouldRemindNow(
+        ctx: android.content.Context,
+        db: AppDatabase,
+        taskId: Long,
+        today: String
+    ): Boolean {
         val task = db.taskDao().getTaskById(taskId) ?: return false
         val year = today.take(4).toIntOrNull()
+        // 内置公告优先，公告没覆盖那一年才读系统日历（见 HolidaySets）；两边都没有就是空集，按周末猜
+        val sets: Pair<Set<String>, Set<String>> =
+            if (year == null) emptySet<String>() to emptySet<String>()
+            else com.zhiwo.shiguangjian.data.festival.HolidaySets.of(ctx, year)
+        val (holidays, makeup) = sets
         return shouldRemind(
             task = task,
             today = today,
             occurrence = db.occurrenceDao().findByTaskAndDate(taskId, today),
             overrideType = db.dayOverrideDao().get(today)?.type,
-            holidays = if (year == null) emptySet() else HolidayCalendar.holidaysOf(year),
-            makeupWorkdays = if (year == null) emptySet() else HolidayCalendar.makeupWorkdaysOf(year),
+            holidays = holidays,
+            makeupWorkdays = makeup,
             planStatus = task.planId?.let { db.planDao().getById(it)?.status },
             goalStatus = task.goalId?.let { db.goalDao().getById(it)?.status }
         )

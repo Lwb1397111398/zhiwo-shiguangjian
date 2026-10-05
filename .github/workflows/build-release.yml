@@ -1,0 +1,59 @@
+name: build-release
+
+# 推 master 自动构建 release 包并发布到 latest Release：
+# App 内「检查更新」只认 latest 这一个入口（tag 固定、资产文件名固定、
+# 描述第一行放 versionCode/versionName 元数据注释）。
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout（全量历史：版本号 = 提交数，浅克隆会数错）
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # wrapper 里写的是华为云分发源（本机快），海外 runner 走官方源
+      - name: Gradle 分发源换官方
+        run: |
+          sed -i 's|repo.huaweicloud.com/gradle|services.gradle.org/distributions|' gradle/wrapper/gradle-wrapper.properties
+
+      - name: Build release APK（统一签名见 android/keystore，与本机包可互相覆盖安装）
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Publish latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          VC=$(git rev-list --count HEAD)
+          VN="1.1.$VC"
+          {
+            echo "<!-- appupdate versionCode=$VC versionName=$VN -->"
+            echo
+            git log --pretty=format:'- %s' -6
+          } > notes.md
+          cp app/build/outputs/apk/release/*.apk zhiwo-shiguangjian.apk
+          if gh release view latest >/dev/null 2>&1; then
+            gh release upload latest zhiwo-shiguangjian.apk --clobber
+            gh release edit latest --notes-file notes.md
+          else
+            gh release create latest zhiwo-shiguangjian.apk --notes-file notes.md --title "最新版"
+          fi
+          echo "released versionCode=$VC versionName=$VN"

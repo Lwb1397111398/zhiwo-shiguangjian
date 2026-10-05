@@ -4,18 +4,41 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+// 版本号 = git 提交数：本机与 CI 对同一提交算出同一个号，每推一次自动 +1，
+// 是应用自更新「远端 versionCode 是否更大」的比较基准。
+// git 不可用时回退 1：本地号偏小只影响"我是旧版"，不会让 CI 新包被误判为旧包。
+val commitCount = try {
+    providers.exec {
+        commandLine("git", "rev-list", "--count", "HEAD")
+        workingDir = rootDir
+    }.standardOutput.asText.get().trim().toInt()
+} catch (e: Exception) {
+    1
+}
+
 android {
     namespace = "com.zhiwo.shiguangjian"
     compileSdk = 36
     buildToolsVersion = "36.1.0"
+
+    // 统一签名：keystore 随仓库走，任何环境（本机/CI）构建的包签名指纹一致，
+    // 才能互相覆盖安装且不清用户数据。触发数据库升级的是 AppDatabase.VERSION，
+    // 与这里的号无关。
+    signingConfigs {
+        create("shared") {
+            storeFile = rootProject.file("android/keystore/app.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.zhiwo.shiguangjian"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        // 触发数据库升级的是 AppDatabase.VERSION，不是这里的号；
-        // 这里只是让覆盖安装时能认出"装了新包"
-        versionName = "1.1.0-v14"
+        versionCode = commitCount
+        versionName = "1.1.$commitCount"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -24,6 +47,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("shared")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -31,6 +57,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("shared")
         }
     }
 

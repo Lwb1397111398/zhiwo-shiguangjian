@@ -1,0 +1,42 @@
+task=testDebugUnitTest  本地运行时间=2026-10-05 15:15
+--- 新鲜度：不是本次运行产生的 XML 数量（必须为 0）---
+0
+--- XML 内 timestamp（Gradle 写的是 UTC，别拿本地日期判）---
+timestamp="2026-10-05T07:15:16"
+timestamp="2026-10-05T07:15:17"
+timestamp="2026-10-05T07:15:18"
+--- 汇总 ---
+tests=329 skipped=0 failures=0 errors=0
+--- 类级用例数（与上一里程碑 diff，删除类必须在白名单里说明）---
+10 com.zhiwo.shiguangjian.data.db.Migration13To14SqlTest
+11 com.zhiwo.shiguangjian.data.profile.UserProfileEditorTest
+11 com.zhiwo.shiguangjian.data.tasks.HolidayCalendarTest
+12 com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionTest
+15 com.zhiwo.shiguangjian.data.memory.MemoryReconciliationTest
+15 com.zhiwo.shiguangjian.data.profile.UserProfileAndMemoryExtractionTest
+17 com.zhiwo.shiguangjian.data.memory.MemorySimilarityTest
+2 com.zhiwo.shiguangjian.data.ai.DailyReviewTextEnhancerTest
+2 com.zhiwo.shiguangjian.data.diary.DiaryEditingTest
+2 com.zhiwo.shiguangjian.data.export.ExportDataBuilderTest
+21 com.zhiwo.shiguangjian.data.tasks.ProgressCalculatorTest
+24 com.zhiwo.shiguangjian.data.db.LegacyTaskMapperTest
+3 com.zhiwo.shiguangjian.data.ai.AiModelsTest
+3 com.zhiwo.shiguangjian.data.ai.AiRepositoryConfigTest
+3 com.zhiwo.shiguangjian.data.ai.AiRetryPolicyTest
+3 com.zhiwo.shiguangjian.data.profile.ApplyAiProfileUpdateTest
+3 com.zhiwo.shiguangjian.data.tasks.TaskDisplayRulesTest
+37 com.zhiwo.shiguangjian.data.tasks.TaskScheduleEngineTest
+4 com.zhiwo.shiguangjian.data.ai.AiJsonParserTest
+41 com.zhiwo.shiguangjian.data.organizeops.OpValidatorTest
+5 com.zhiwo.shiguangjian.data.profile.ProfileBlocklistTest
+6 com.zhiwo.shiguangjian.data.organizeops.DeleteSourcePlannerTest
+6 com.zhiwo.shiguangjian.data.profile.ProfileBlocklistPromptTest
+7 com.zhiwo.shiguangjian.data.diary.HistoryCorrectionScannerTest
+8 com.zhiwo.shiguangjian.alarm.ReminderIdsTest
+8 com.zhiwo.shiguangjian.data.profile.UserProfileEditorSessionBlocklistTest
+8 com.zhiwo.shiguangjian.data.settings.ScheduleDisplayPrefsTest
+8 com.zhiwo.shiguangjian.data.tasks.AdhocDeadlineTest
+8 com.zhiwo.shiguangjian.data.tasks.TaskSummaryBuilderTest
+8 com.zhiwo.shiguangjian.data.update.UpdateCheckerTest
+9 com.zhiwo.shiguangjian.alarm.ReminderGateTest
+9 com.zhiwo.shiguangjian.data.memory.DependencyCascadeTest

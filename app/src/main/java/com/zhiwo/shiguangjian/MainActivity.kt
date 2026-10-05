@@ -24,11 +24,13 @@ import com.zhiwo.shiguangjian.alarm.AlarmScheduler
 import com.zhiwo.shiguangjian.data.db.DbGate
 import com.zhiwo.shiguangjian.data.db.DbState
 import com.zhiwo.shiguangjian.data.repository.SettingsRepository
+import com.zhiwo.shiguangjian.data.update.UpdateManager
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.zhiwo.shiguangjian.ui.components.BottomNavBar
 import com.zhiwo.shiguangjian.ui.components.DailyGreetingOverlay
 import com.zhiwo.shiguangjian.ui.screens.*
 import com.zhiwo.shiguangjian.ui.theme.ZhiwoTheme
+import com.zhiwo.shiguangjian.ui.update.UpdateHost
 import com.zhiwo.shiguangjian.ui.viewmodel.SpecialDateViewModel
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -79,8 +81,12 @@ class MainActivity : ComponentActivity() {
                 DbState.Ready -> {
                     androidx.compose.runtime.LaunchedEffect(Unit) {
                         app.appScope.launch { AlarmScheduler.syncFixedAlarms(this@MainActivity) }
+                        // 启动静默检查更新（24h 节流），发现新版才弹「发现新版本」询问
+                        app.appScope.launch { UpdateManager.maybeCheckOnStart(this@MainActivity) }
                     }
                     ZhiwoRoot(app)
+                    // 更新弹窗宿主：发现新版询问 / 下载进度 / 下载完成待安装
+                    UpdateHost()
                 }
                 DbState.Checking -> DbCheckingScreen()
                 is DbState.UpgradeFailed -> DbUpgradeFailedScreen(

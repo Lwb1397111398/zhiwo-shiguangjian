@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.update.UpdateCheckerTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-05T07:15:18" hostname="文彬三号" time="0.007">
+  <properties/>
+  <testcase name="资产里没有apk返回null" classname="com.zhiwo.shiguangjian.data.update.UpdateCheckerTest" time="0.003"/>
+  <testcase name="缺元数据注释返回null" classname="com.zhiwo.shiguangjian.data.update.UpdateCheckerTest" time="0.001"/>
+  <testcase name="多个资产时选中apk" classname="com.zhiwo.shiguangjian.data.update.UpdateCheckerTest" time="0.002"/>
+  <testcase name="body为空或assets缺失返回null" classname="com.zhiwo.shiguangjian.data.update.UpdateCheckerTest" time="0.0"/>
+  <testcase name="正常解析 元数据+apk资产+说明" classname="com.zhiwo.shiguangjian.data.update.UpdateCheckerTest" time="0.0"/>
+  <testcase name="版本比较 只有远端更大才算有更新" classname="com.zhiwo.shiguangjian.data.update.UpdateCheckerTest" time="0.0"/>
+  <testcase name="versionName 允许连字符" classname="com.zhiwo.shiguangjian.data.update.UpdateCheckerTest" time="0.0"/>
+  <testcase name="versionCode不是数字返回null" classname="com.zhiwo.shiguangjian.data.update.UpdateCheckerTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

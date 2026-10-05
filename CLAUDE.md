@@ -27,9 +27,9 @@ bash tools/verify.sh assembleDebug
 
 `.gradle-home/` 已在 `.gitignore` 中，勿提交。
 
-**Git 与推送的事实**：git 仓库根就是 `zhiwo-android/`（上层 `work area/` 不是仓库），分支 `master`，远端 `origin` 已配好 = `https://github.com/lwb13738132243-xiaohao/zhiwo-shiguangjian.git`（老板 GitHub **小号**的私有仓库；Edge 登的是大号。`git config user.name` 里的 `Lwb1397111398` 只是本地署名，不是 GitHub 登录名）。
-`*.apk` 已被忽略，所以 `dist/` 里的调试包**不入库**，要给用户拿包走 GitHub Release；`docs/…/证据/**/binary/` 也加了忽略（Gradle 的 `.bin/.idx` 是垃圾，只留可读的 XML/TXT）。
-**再推一次怎么推**：本机没有 `gh` CLI、没有 SSH 密钥，且在我这种非交互 shell 里 GCM 的 GitHub 授权窗**弹不出来**（实测 180 秒超时、零输出），只能拿老板给的一次性 classic token（勾 `repo`、1 天有效期、用完他必须删）走 URL：`GIT_TERMINAL_PROMPT=0 git -c credential.helper= push "https://x-access-token:<令牌>@github.com/lwb13738132243-xiaohao/zhiwo-shiguangjian.git master:master"`。已踩的两个坑：① 少了 `-c credential.helper=` 会卡在弹窗；② 改用 `-c http.extraHeader="Authorization: Bearer …"` 单独用**不生效**，GitHub 返 401 后 git 照样追问用户名。令牌不得写进 `.git/config`、remote URL 或任何文件；推完必须用本地 `git rev-parse master` 对上 GitHub API `git/ref/heads/master` 的 sha 才算成功。想彻底不再要令牌，就生成 SSH 密钥、把**公钥**给老板贴到 https://github.com/settings/keys。
+**Git 与推送的事实**：git 仓库根就是 `zhiwo-android/`（上层 `work area/` 不是仓库），分支 `master`。**2026-10-05 起仓库已迁到老板大号的公开仓库 `https://github.com/Lwb1397111398/zhiwo-shiguangjian.git`**（原小号私有仓库 `lwb13738132243-xiaohao/zhiwo-shiguangjian` 已弃用，大号对它无权限；老板批准迁移是因为要上应用自更新，公开仓库匿名即可查 Release）。推送直接 `git push origin master`——Windows 凭据管理器里的大号凭据（gh CLI 已登录 `Lwb1397111398`，`~\.local\bin\gh.exe`）就能推，不需要 token。`*.apk` 已被忽略，给用户拿包走 GitHub Release（CI 自动发 latest）；`docs/…/证据/**/binary/` 也加了忽略（Gradle 的 `.bin/.idx` 是垃圾，只留可读的 XML/TXT）。
+
+**应用自更新**：推 master 即自动构建发版（`.github/workflows/build-release.yml`），App 内检查/下载/安装，全链路见 `docs/模块总览/应用自更新模块总览.md`。版本号 = git 提交数（`app/build.gradle.kts` 的 `providers.exec`），debug/release 统一签名 `android/keystore/app.keystore`（PKCS12 / android / androiddebugkey，随公开仓库公开，个人项目风险可控）。
 
 **注意**：Gradle 构建必须在项目根目录（`zhiwo-shiguangjian/`）执行，因为 `gradlew` 和 `settings.gradle.kts` 在那里。若从 `zhiwo-android/` 子目录执行，需要先 `cd` 到父目录。
 

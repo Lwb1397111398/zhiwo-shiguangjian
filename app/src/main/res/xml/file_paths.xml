@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <cache-path name="share" path="share/" />
+    <!-- 应用自更新：下载到 cache/updates/ 的 APK 经 FileProvider 给系统安装器临时读权限 -->
+    <cache-path name="updates" path="updates/" />
 </paths>

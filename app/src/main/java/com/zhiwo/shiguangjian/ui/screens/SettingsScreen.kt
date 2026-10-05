@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.zhiwo.shiguangjian.ui.theme.*
+import com.zhiwo.shiguangjian.ui.update.UpdateSection
 import com.zhiwo.shiguangjian.ui.viewmodel.CategoryInfo
 import com.zhiwo.shiguangjian.ui.viewmodel.SettingsViewModel
 import kotlinx.coroutines.launch
@@ -553,6 +554,11 @@ fun SettingsScreen(
                 }
             }
         }
+
+        // ===== 应用更新 =====
+        UpdateSection()
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         // ===== 应用信息 =====
         Column(

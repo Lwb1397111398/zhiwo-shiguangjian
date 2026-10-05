@@ -1,0 +1,2 @@
+-rw-r--r-- 1 李文彬 197121 19275929 Sep 22 19:21 app/build/outputs/apk/debug/app-debug.apk
+-rw-r--r-- 1 李文彬 197121  2680459 Oct  5 15:22 app/build/outputs/apk/release/app-release.apk

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.alarm.ReminderIdsTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-05T07:15:16" hostname="文彬三号" time="0.168">
+  <properties/>
+  <testcase name="A08_未来的锚点原样保留_周重复同理" classname="com.zhiwo.shiguangjian.alarm.ReminderIdsTest" time="0.001"/>
+  <testcase name="A01_相邻任务的码互不相同" classname="com.zhiwo.shiguangjian.alarm.ReminderIdsTest" time="0.016"/>
+  <testcase name="A05_旧码清理枚举出两把枪" classname="com.zhiwo.shiguangjian.alarm.ReminderIdsTest" time="0.001"/>
+  <testcase name="A06_超出可编码范围直接拒绝而不是悄悄撞号" classname="com.zhiwo.shiguangjian.alarm.ReminderIdsTest" time="0.003"/>
+  <testcase name="A07_重复闹钟首枪必须落在未来且保持节律" classname="com.zhiwo.shiguangjian.alarm.ReminderIdsTest" time="0.005"/>
+  <testcase name="A02_新码解得回任务且反解覆盖全部新码" classname="com.zhiwo.shiguangjian.alarm.ReminderIdsTest" time="0.0"/>
+  <testcase name="A03_新码不与固定闹钟及旧码段重叠" classname="com.zhiwo.shiguangjian.alarm.ReminderIdsTest" time="0.137"/>
+  <testcase name="A04_固定闹钟与旧码都解不出任务" classname="com.zhiwo.shiguangjian.alarm.ReminderIdsTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -26,16 +26,14 @@ import com.zhiwo.shiguangjian.ui.viewmodel.CalendarViewModel
 @Composable
 fun CalendarScreen(
     viewModel: CalendarViewModel = viewModel(),
-    onRecordClick: (Long) -> Unit = {}
+    onRecordClick: (Long) -> Unit = {},
+    /** 从时光页热力图跳来时带的日期；空串=今天 */
+    initialDate: String = ""
 ) {
     val tasks by viewModel.tasks.collectAsState()
     val records by viewModel.records.collectAsState()
     var markingDate by remember { mutableStateOf<String?>(null) }
-    var selectedDate by remember {
-        mutableStateOf(
-            DateFormats.nowDate()
-        )
-    }
+    var selectedDate by remember { mutableStateOf(initialDate.ifBlank { DateFormats.nowDate() }) }
 
     val occurrences by viewModel.occurrences.collectAsState()
     val overrides by viewModel.overrides.collectAsState()
@@ -61,7 +59,7 @@ fun CalendarScreen(
                 tasks = tasks,
                 selectedDate = selectedDate,
                 onSelectDate = { selectedDate = it },
-                plannedCountOf = { viewModel.plannedCount(it) },
+                plannedCountOf = { viewModel.specialCount(it) },
                 dayLabel = { viewModel.dayLabel(it) },
                 onLongPressDate = { markingDate = it }
             )

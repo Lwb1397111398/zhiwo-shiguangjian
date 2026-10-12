@@ -206,8 +206,17 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     /** 日型判定唯一入口：该年没有节假日数据时按周末折算，并用 holidayWarning 明确告知 */
     private fun weekendOnly(date: String): DayType = dayTypeOrWeekend(date, emptySet(), emptySet(), null)
 
-    fun check(entry: DayEntry, date: String = today) = viewModelScope.launch {
-        bridge.check(entry.task, date, DateFormats.nowDateTimeIso())
+    fun check(entry: DayEntry, date: String = today, minutes: Int = 0) = viewModelScope.launch {
+        bridge.check(entry.task, date, DateFormats.nowDateTimeIso(), minutes)
+    }
+
+    /**
+     * 打卡顺手补"实际花了多久"：走同一个 setCheck 合并语义（保留 done 状态与既有备注），
+     * 只动 actualMinutes——趋势图里"真实投入"就靠这一步积起来。
+     */
+    fun recordActualMinutes(taskId: Long, date: String, minutes: Int) = viewModelScope.launch {
+        occurrencesRepo.setCheck(taskId, date, "done", actualMinutes = minutes,
+            now = DateFormats.nowDateTimeIso())
     }
 
     fun uncheck(entry: DayEntry, date: String = today) = viewModelScope.launch {

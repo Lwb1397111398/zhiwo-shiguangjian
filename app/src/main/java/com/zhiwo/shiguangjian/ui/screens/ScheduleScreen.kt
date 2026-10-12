@@ -1,5 +1,10 @@
 package com.zhiwo.shiguangjian.ui.screens
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.items
@@ -19,6 +24,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -27,10 +33,13 @@ import com.zhiwo.shiguangjian.data.ai.DateFormats
 import com.zhiwo.shiguangjian.data.db.entity.TaskEntity
 import com.zhiwo.shiguangjian.data.tasks.DayEntry
 import com.zhiwo.shiguangjian.data.tasks.deadlineDate
+import com.zhiwo.shiguangjian.ui.components.DoneRing
+import com.zhiwo.shiguangjian.ui.components.TimeLensCard
 import com.zhiwo.shiguangjian.ui.theme.Success
 import com.zhiwo.shiguangjian.ui.viewmodel.ScheduleSectionGroup
 import com.zhiwo.shiguangjian.ui.viewmodel.ScheduleUiState
 import com.zhiwo.shiguangjian.ui.viewmodel.ScheduleViewModel
+import com.zhiwo.shiguangjian.ui.viewmodel.TimeLensViewModel
 import kotlinx.coroutines.launch
 
 private val SECTION_TITLES = mapOf(
@@ -50,9 +59,12 @@ fun ScheduleScreen(
     onPlanClick: (Long) -> Unit = {},
     onGoalClick: (Long) -> Unit = {},
     onShowAllPlans: () -> Unit = {},
+    onOpenTimeLens: () -> Unit = {},
     viewModel: ScheduleViewModel = viewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    val lensVm: TimeLensViewModel = viewModel()
+    val lensState by lensVm.state.collectAsState()
     val miscTodo by viewModel.miscTodo.collectAsState()
     val activePlans by viewModel.activePlans.collectAsState()
     val activeGoals by viewModel.activeGoals.collectAsState()
@@ -62,6 +74,9 @@ fun ScheduleScreen(
     var fillTarget by remember { mutableStateOf<DayEntry?>(null) }
     var fillDate by remember { mutableStateOf(state.today) }
     var notDoneDate by remember { mutableStateOf(state.today) }
+    /** 勾完成后顺手补"实际花了多久"的小面板 */
+    var minutesTarget by remember { mutableStateOf<DayEntry?>(null) }
+    var minutesDate by remember { mutableStateOf(state.today) }
     var showingPrefs by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<TaskEntity?>(null) }
     var deleteOccCount by remember { mutableStateOf(-1) }
@@ -72,6 +87,10 @@ fun ScheduleScreen(
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    // 数字滚动 + 完成小环：数据变化时平滑过渡，不常驻帧循环
+    val doneAnim by animateIntAsState(state.doneCount, spring(), label = "doneAnim")
+    val dueAnim by animateIntAsState(state.dueCount, spring(), label = "dueAnim")
+
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
@@ -80,11 +99,15 @@ fun ScheduleScreen(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text("今日安排", style = MaterialTheme.typography.headlineMedium)
-                    Text(
-                        if (state.loading) "载入中…" else "已完成 ${state.doneCount} / 应做 ${state.dueCount}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        DoneRing(doneAnim, dueAnim, size = 18.dp, strokeWidth = 2.5.dp)
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            if (state.loading) "载入中…" else "已完成 $doneAnim / 应做 $dueAnim",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 FilledTonalIconButton(onClick = { showingPrefs = true }) {
                     Icon(Icons.Default.Settings, contentDescription = "显示设置")
@@ -105,6 +128,15 @@ fun ScheduleScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 96.dp, start = 4.dp, end = 4.dp)
                 ) {
+                    item(key = "lens-card") {
+                        TimeLensCard(
+                            budget = lensState.budget,
+                            trend = lensState.trend,
+                            loading = lensState.loading,
+                            onOpen = onOpenTimeLens,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                    }
                     orderedVisible(state).forEach { (group, rows) ->
                         if (rows.isEmpty()) return@forEach
                         item(key = "sec-" + group.name) {
@@ -133,7 +165,18 @@ fun ScheduleScreen(
                                         val done = entry.occurrence?.status == "done" ||
                                             entry.state == com.zhiwo.shiguangjian.data.tasks.EntryState.DONE
                                         val target = entry.date.ifBlank { state.today }
-                                        if (done) viewModel.uncheck(entry, target) else viewModel.check(entry, target)
+                                        if (done) {
+                                            viewModel.uncheck(entry, target)
+                                        } else {
+                                            viewModel.check(entry, target)
+                                            // 留白有自己的回填流程；其余勾完成顺手问一句实际花了多久（可跳过）
+                                            if (entry.task.kind != "blank" &&
+                                                (entry.occurrence?.actualMinutes ?: 0) == 0
+                                            ) {
+                                                minutesTarget = entry
+                                                minutesDate = target
+                                            }
+                                        }
                                     },
                                     onLongPress = { if (entry.occurrence?.status != "done") { notDoneTarget = entry; notDoneDate = entry.date.ifBlank { state.today } } },
                                     onEdit = { editing = entry.task },
@@ -312,12 +355,80 @@ fun ScheduleScreen(
             dismissButton = { TextButton(onClick = { notDoneTarget = null }) { Text("取消") } }
         )
     }
+
+    minutesTarget?.let { entry ->
+        ActualMinutesSheet(
+            title = entry.task.content,
+            suggested = entry.task.durationMinutes,
+            onSave = { minutes ->
+                viewModel.recordActualMinutes(entry.task.id, minutesDate, minutes)
+                minutesTarget = null
+            },
+            onSkip = { minutesTarget = null }
+        )
+    }
 }
 
 private val NOT_DONE_REASONS = listOf(
     "no_time" to "没时间", "tired" to "太累", "sick" to "身体不舒服",
     "forgot" to "忘了", "changed" to "情况变了", "other" to "其他"
 )
+
+/**
+ * 打卡顺手补「实际花了多久」：快捷 chips + 自定义输入，不填直接跳过也不影响完成。
+ * 只是给趋势图攒"真实投入"数据，不改变打卡本身的任何语义。
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ActualMinutesSheet(
+    title: String,
+    suggested: Int,
+    onSave: (Int) -> Unit,
+    onSkip: () -> Unit
+) {
+    var custom by remember { mutableStateOf("") }
+    val options = remember(suggested) {
+        (listOf(15, 30, 45, 60, 90).takeIf { suggested in it } ?: (listOf(suggested) + listOf(15, 30, 45, 60, 90)))
+            .distinct().sorted()
+    }
+    var selected by remember { mutableStateOf(if (suggested > 0) suggested else -1) }
+    ModalBottomSheet(onDismissRequest = onSkip) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text("「${title.take(18)}${if (title.length > 18) "…" else ""}」实际花了多久？",
+                style = MaterialTheme.typography.titleMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                options.forEach { m ->
+                    FilterChip(
+                        selected = selected == m && custom.isBlank(),
+                        onClick = { selected = m; custom = "" },
+                        label = { Text("$m 分") }
+                    )
+                }
+            }
+            OutlinedTextField(
+                value = custom,
+                onValueChange = { custom = it.filter { c -> c.isDigit() }.take(3) },
+                label = { Text("自定义分钟数（填了优先用这个）") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    enabled = (custom.toIntOrNull() ?: 0) > 0 || selected > 0,
+                    onClick = { onSave(custom.toIntOrNull()?.takeIf { it > 0 } ?: selected) },
+                    modifier = Modifier.weight(1f)
+                ) { Text("就这么多") }
+                OutlinedButton(onClick = onSkip, modifier = Modifier.weight(1f)) { Text("不填了") }
+            }
+        }
+    }
+}
 
 @Composable
 private fun EmptySchedule(onCreate: () -> Unit) {
@@ -381,6 +492,16 @@ private fun TaskRow(
     val task = entry.task
     val isDone = entry.occurrence?.status == "done" || entry.state == com.zhiwo.shiguangjian.data.tasks.EntryState.DONE
     val isNotDone = entry.occurrence?.status == "not_done"
+    // 勾选瞬间的弹性小庆祝：true 时从 85% 弹回 100%（一次性的，不常驻）
+    val checkboxScale = remember { Animatable(1f) }
+    LaunchedEffect(isDone) {
+        if (isDone) {
+            checkboxScale.snapTo(0.85f)
+            checkboxScale.animateTo(
+                1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
+            )
+        }
+    }
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
             .combinedClickable(onClick = onEdit, onLongClick = onLongPress),
@@ -388,7 +509,11 @@ private fun TaskRow(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
     ) {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = isDone, onCheckedChange = { onToggle() })
+            Checkbox(
+                checked = isDone,
+                onCheckedChange = { onToggle() },
+                modifier = Modifier.scale(checkboxScale.value)
+            )
             Column(Modifier.weight(1f)) {
                 Text(task.content, style = MaterialTheme.typography.bodyLarge)
                 val meta = buildString {

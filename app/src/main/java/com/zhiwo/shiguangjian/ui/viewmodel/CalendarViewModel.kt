@@ -60,6 +60,9 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
 
     fun plannedCount(date: String): Int = dayPlan(date).planned.size
 
+    /** 日历圆点只标"这天有临时任务"之类的特殊安排：每日固定/留白天天都有，打点反而失真 */
+    fun specialCount(date: String): Int = dayPlan(date).planned.count { it.task.kind.trim().lowercase() == "adhoc" }
+
     fun missedCount(date: String): Int =
         dayPlan(date).let { it.overdue.size + it.missed.size }
 

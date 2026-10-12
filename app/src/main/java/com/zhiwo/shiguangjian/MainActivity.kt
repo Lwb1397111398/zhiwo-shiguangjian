@@ -226,7 +226,18 @@ fun MainApp() {
                     },
                     onPlanClick = { planId -> navController.navigate("plan_detail/$planId") },
                     onGoalClick = { goalId -> navController.navigate("goal_detail/$goalId") },
-                    onShowAllPlans = { navController.navigate("plans") { launchSingleTop = true } }
+                    onShowAllPlans = { navController.navigate("plans") { launchSingleTop = true } },
+                    onOpenTimeLens = { navController.navigate("time_lens") { launchSingleTop = true } }
+                )
+            }
+
+            // 时光统计：今日时间环 / 近14天趋势 / 本月热力（从安排页顶部卡片进入）
+            composable("time_lens") {
+                TimeLensScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenCalendarDay = { date ->
+                        navController.navigate("calendar?date=$date") { launchSingleTop = true }
+                    }
                 )
             }
 
@@ -258,8 +269,16 @@ fun MainApp() {
                 )
             }
 
-            composable("calendar") {
+            // date 参数：时光页热力图点某天直接跳过来看那天的安排（缺省=今天）
+            composable(
+                "calendar?date={date}",
+                arguments = listOf(navArgument("date") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                })
+            ) { backStackEntry ->
                 CalendarScreen(
+                    initialDate = backStackEntry.arguments?.getString("date").orEmpty(),
                     onRecordClick = { recordId ->
                         navController.navigate("record_detail/$recordId") {
                             launchSingleTop = true

@@ -61,6 +61,7 @@ fun RecordListScreen(
     onPlanClick: (Long) -> Unit = {},
     onGoalClick: (Long) -> Unit = {},
     onShowAllPlans: () -> Unit = {},
+    onOpenTimeLens: () -> Unit = {},
     viewModel: RecordListViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -148,7 +149,8 @@ fun RecordListScreen(
                     onRecordClick = onRecordClick,
                     onPlanClick = onPlanClick,
                     onGoalClick = onGoalClick,
-                    onShowAllPlans = onShowAllPlans
+                    onShowAllPlans = onShowAllPlans,
+                    onOpenTimeLens = onOpenTimeLens
                 )
             }
 

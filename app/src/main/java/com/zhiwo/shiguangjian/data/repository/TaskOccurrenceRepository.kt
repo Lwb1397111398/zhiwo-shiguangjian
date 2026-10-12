@@ -61,8 +61,8 @@ class TaskWriteBridge(private val db: AppDatabase) {
     private val taskDao = db.taskDao()
     private val occurrences = TaskOccurrenceRepository(db)
 
-    suspend fun check(task: TaskEntity, date: String, now: String) {
-        occurrences.setCheck(task.id, date, "done", now = now)
+    suspend fun check(task: TaskEntity, date: String, now: String, minutes: Int = 0) {
+        occurrences.setCheck(task.id, date, "done", actualMinutes = minutes, now = now)
         taskDao.updateTask(task.copy(isCompleted = true, completedAt = now, dailyCompletionDate = date))
     }
 

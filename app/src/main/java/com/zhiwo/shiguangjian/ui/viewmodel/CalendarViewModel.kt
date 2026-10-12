@@ -46,12 +46,13 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
 
     private val overrideDao get() = app.database.dayOverrideDao()
 
-    /** 某天的排期结果：与安排页同一个引擎，不再各算一套 */
+    /** 某天的排期结果：与安排页同一个引擎，不再各算一套。
+     *  打卡传全量、由引擎自截当日——adhoc"判后了结"要看历史打卡（生命周期设计 §2.1） */
     fun dayPlan(date: String): com.zhiwo.shiguangjian.data.tasks.DayPlanResult =
         com.zhiwo.shiguangjian.data.tasks.entriesFor(
             date = date,
             tasks = _tasks.value,
-            occurrences = _occurrences.value.filter { it.date == date },
+            occurrences = _occurrences.value,
             dayType = dayType(date),
             planStatusById = _planStatus.value,
             goalStatusById = _goalStatus.value
@@ -115,10 +116,10 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             try {
                 val task = taskRepo.getTaskById(taskId) ?: return@launch
-                // 打卡写进 task_occurrences（真值），老列由桥接同步维护，供还没改造的读路径使用
+                // 打卡写进 task_occurrences（真值），老列由桥接同步维护，供还没改造的读路径使用。
+                // 不停闹钟（生命周期设计不变量 §三-4）：当天误响由 ReminderGate 挡；
+                // 在这里 cancel 会把每日任务的重复铃被一次勾选永久停掉
                 bridge.check(task, date, DateFormats.nowDateTimeIso())
-                // 取消对应的提醒闹钟（与 RecordListViewModel 行为一致）
-                SmartScheduleManager.cancelAlarm(app, taskId, task.calendarEventId)
             } catch (e: Throwable) {
                 android.util.Log.e("CalendarVM", "完成任务失败", e)
             }
@@ -131,7 +132,11 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
             try {
                 val task = taskRepo.getTaskById(taskId) ?: return@launch
                 bridge.check(task, DateFormats.nowDate(), DateFormats.nowDateTimeIso())
-                bridge.archive(taskRepo.getTaskById(taskId) ?: task)   // 等价旧「真正完成」：不再每日刷新
+                val fresh = taskRepo.getTaskById(taskId) ?: task
+                bridge.archive(fresh)   // 等价旧「真正完成」：不再每日刷新
+                // 进非 active 必停铃（生命周期设计 §四）；以前只靠 ReminderGate 静默，
+                // 僵尸闹钟要拖到下次开机才被清
+                SmartScheduleManager.cancelAlarm(app, fresh.id, fresh.calendarEventId)
             } catch (e: Throwable) {
                 android.util.Log.e("CalendarVM", "真正完成任务失败", e)
             }

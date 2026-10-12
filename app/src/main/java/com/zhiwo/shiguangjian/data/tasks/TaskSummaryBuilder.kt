@@ -24,11 +24,11 @@ fun summaryForDate(
     planStatusById: Map<Long, String> = emptyMap(),
     goalStatusById: Map<Long, String> = emptyMap()
 ): List<SummaryLine> {
-    val dayOccurrences = occurrences.filter { it.date == date }
+    // 打卡传全量、由引擎自截当日：adhoc"判后了结"要看该任务的历史打卡（生命周期设计 §2.1）
     val plan = entriesFor(
         date = date,
         tasks = tasks,
-        occurrences = dayOccurrences,
+        occurrences = occurrences,
         dayType = dayType,
         planStatusById = planStatusById,
         goalStatusById = goalStatusById

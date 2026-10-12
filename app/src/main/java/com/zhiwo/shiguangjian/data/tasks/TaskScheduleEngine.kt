@@ -166,6 +166,28 @@ fun isEffectivelyDone(
     date: String
 ): Boolean = occurrence != null && occurrence.status == "done" && occurrence.date == date
 
+/**
+ * 判后了结集合（生命周期设计 2026-10-12 §2.1）：adhoc 是一次性事实，
+ * 在 `onOrBefore` 这天（含）之前出现过一条 done/not_done 打卡，从次日起就不再出现；
+ * pending（撤销完成）不算——撤销后任务必须能回来。脏状态一律不算，宁可多提醒不可凭空消失。
+ *
+ * 为什么要日期参数（S02 回归教训）：判决只终结"判决日之后"的日子。
+ * 昨天该做没做、今天才补勾——昨天的日记里它仍该是 ○ 未记录，不能凭空消失。
+ */
+fun adhocJudgedTaskIds(
+    tasks: List<TaskEntity>,
+    occurrences: List<TaskOccurrenceEntity>,
+    onOrBefore: String
+): Set<Long> {
+    val cutoff = engineDate(onOrBefore) ?: return emptySet()
+    val adhocIds = tasks.filter { it.kind.trim().lowercase() == "adhoc" }.map { it.id }.toSet()
+    if (adhocIds.isEmpty()) return emptySet()
+    return occurrences
+        .filter { it.taskId in adhocIds && (it.status == "done" || it.status == "not_done") }
+        .filter { engineDate(it.date)?.let { day -> !day.isAfter(cutoff) } == true }
+        .map { it.taskId }.toSet()
+}
+
 fun entriesFor(
     date: String,
     tasks: List<TaskEntity>,
@@ -177,6 +199,7 @@ fun entriesFor(
 ): DayPlanResult {
     val d = engineDate(date) ?: return DayPlanResult(emptyList(), emptyList(), emptyList(), emptyList(), 0, emptyList())
     val occByTask = occurrences.filter { it.date == date }.associateBy { it.taskId }
+    val judgedAdhoc = adhocJudgedTaskIds(tasks, occurrences, date)
     val issues = mutableListOf<String>()
     val planned = mutableListOf<DayEntry>()
     val overdue = mutableListOf<DayEntry>()
@@ -189,18 +212,31 @@ fun entriesFor(
         val goalStatus = task.goalId?.let { goalStatusById[it] }
 
         if (kind == "adhoc") {
+            // ① 当天勾完成是既成事实：无条件进"今日已完成"，哪怕随后被结束/归属终结
+            if (isEffectivelyDone(occ, date)) {
+                done += DayEntry(task, occ, EntryState.DONE, EntrySection.ADHOC_TODAY)
+                return@forEach
+            }
+            // ② 门控（修 B3/B4：此前过期分支先于状态检查，archived/暂停归属的 adhoc 永驻"已过期"）
+            if (task.status.trim().lowercase() != "active") return@forEach
+            if (planStatus != null && planStatus != "active") return@forEach
+            if (goalStatus != null && goalStatus != "active") return@forEach
+            // ③ 当天记了"没做"：今天显示划线+原因（finishGoal 坐实的欠账也走这里），明天起判后消失
+            if (occ?.status == "not_done") {
+                planned += DayEntry(task, occ, EntryState.NOT_DONE, EntrySection.ADHOC_TODAY)
+                return@forEach
+            }
+            // ④ 判后了结（修 B2/B5）：任何一天有过结论就不再出现
+            if (task.id in judgedAdhoc) return@forEach
+            // ⑤ 时间窗（修 B13，与 adhocOverdueOn 同口径）：期限内=待做，过了期限才过期
             val scheduled = engineDate(task.scheduledDate)
             val due = engineDate(task.deadlineDate)
-            val isDone = isEffectivelyDone(occ, date)
+            val overdueNow = (due != null && d.isAfter(due)) ||
+                (due == null && scheduled != null && d.isAfter(scheduled))
             when {
-                isDone -> done += DayEntry(task, occ, EntryState.DONE, EntrySection.ADHOC_TODAY)
-                scheduled == null -> if (due == null || !d.isAfter(due)) {
-                    planned += DayEntry(task, occ, stateOf(occ), EntrySection.ADHOC_TODAY)
-                } else overdue += DayEntry(task, occ, EntryState.DUE, EntrySection.OVERDUE)
-                due != null && d.isAfter(due) -> overdue += DayEntry(task, occ, EntryState.DUE, EntrySection.OVERDUE)
-                d.isBefore(scheduled) -> Unit
-                d.isAfter(scheduled) -> overdue += DayEntry(task, occ, EntryState.DUE, EntrySection.OVERDUE)
-                !isScheduledOn(task, date, dayType, planStatus, goalStatus) -> Unit
+                engineDate(task.startDate)?.let { d.isBefore(it) } == true -> Unit
+                overdueNow -> overdue += DayEntry(task, occ, EntryState.DUE, EntrySection.OVERDUE)
+                scheduled != null && d.isBefore(scheduled) -> Unit
                 else -> planned += DayEntry(task, occ, stateOf(occ), EntrySection.ADHOC_TODAY)
             }
             return@forEach

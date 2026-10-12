@@ -34,8 +34,9 @@ interface TaskDao {
     @Query("UPDATE tasks SET recordId = NULL WHERE recordId = :recordId")
     suspend fun detachTasksFromRecord(recordId: Long)
 
-    @Query("DELETE FROM tasks WHERE recordId = :recordId")
-    suspend fun deleteTasksByRecordId(recordId: Long)
+    /** 删目标时手动摘链（与 deletePlan 同款防御）：外键虽已 SET NULL，仍显式清不赌级联 */
+    @Query("UPDATE tasks SET goalId = NULL WHERE goalId = :goalId")
+    suspend fun detachTasksFromGoal(goalId: Long)
 
     @Query("SELECT COUNT(*) FROM tasks")
     suspend fun getTaskCount(): Int

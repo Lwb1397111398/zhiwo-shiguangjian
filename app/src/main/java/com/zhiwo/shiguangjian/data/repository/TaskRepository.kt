@@ -41,8 +41,5 @@ class TaskRepository(private val taskDao: TaskDao) {
 
     suspend fun updateTask(task: TaskEntity) = taskDao.updateTask(task)
 
-    suspend fun deleteTasksByRecordId(recordId: Long) =
-        taskDao.deleteTasksByRecordId(recordId)
-
     suspend fun getTaskCount(): Int = taskDao.getTaskCount()
 }

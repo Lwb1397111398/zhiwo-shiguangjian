@@ -37,6 +37,7 @@ fun GoalDetailScreen(
     val state by viewModel.state.collectAsState()
     var confirmAchieve by remember { mutableStateOf(false) }
     var confirmAbandon by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
 
     val goal = state.goal
     Scaffold(
@@ -51,12 +52,16 @@ fun GoalDetailScreen(
             )
         },
         bottomBar = {
-            if (goal != null && goal.status == "active") {
+            // 任何状态的 goal 都要有物理删除出口（生命周期设计不变量 §三-1，B12）；
+            // 达成/放弃只在 active 时提供——那是"收尾"，删除是"抹账"，语义分开
+            if (goal != null) {
                 ActionBar(
+                    active = goal.status == "active",
                     onAddPlan = { onAddPlan(goal.id) },
                     onEdit = { onEditGoal(goal.id) },
                     onAchieve = { confirmAchieve = true },
-                    onAbandon = { confirmAbandon = true }
+                    onAbandon = { confirmAbandon = true },
+                    onDelete = { confirmDelete = true }
                 )
             }
         }
@@ -188,21 +193,50 @@ fun GoalDetailScreen(
                 onDismiss = { confirmAbandon = false }
             )
         }
+        if (confirmDelete) {
+            ConfirmDialog(
+                title = "彻底删除目标「${it.title}」？",
+                body = "这会抹掉目标本身，找不回来。" +
+                    "其下 ${state.plans.size} 个计划、${state.taskCount} 个任务不会被连带删除——它们脱离这个目标转为自由，" +
+                    "仍能在「我的计划」的「自由计划与无主任务」块里找到，打卡记录全部保留。" +
+                    "想让这条线体面收尾的话，改选「标记达成」或「放弃」，之后想抹账再来删。",
+                confirmText = "确认删除",
+                onConfirm = { confirmDelete = false; viewModel.deleteGoal(it); onBack() },
+                onDismiss = { confirmDelete = false }
+            )
+        }
     }
 }
 
 @Composable
-private fun ActionBar(onAddPlan: () -> Unit, onEdit: () -> Unit, onAchieve: () -> Unit, onAbandon: () -> Unit) {
+private fun ActionBar(
+    active: Boolean,
+    onAddPlan: () -> Unit,
+    onEdit: () -> Unit,
+    onAchieve: () -> Unit,
+    onAbandon: () -> Unit,
+    onDelete: () -> Unit
+) {
     Surface(shadowElevation = 8.dp) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Button(onClick = onAddPlan, modifier = Modifier.weight(1.2f)) { Text("+ 新增计划") }
+            if (active) {
+                Button(onClick = onAddPlan, modifier = Modifier.weight(1.2f)) { Text("+ 新增计划") }
+            }
             OutlinedButton(onClick = onEdit, modifier = Modifier.weight(0.8f)) { Text("编辑") }
-            FilledTonalButton(onClick = onAchieve, modifier = Modifier.weight(1f)) { Text("标记达成") }
-            TextButton(onClick = onAbandon) { Text("放弃", color = MaterialTheme.colorScheme.error) }
+            if (active) {
+                FilledTonalButton(onClick = onAchieve, modifier = Modifier.weight(1f)) { Text("标记达成") }
+                TextButton(onClick = onAbandon) { Text("放弃", color = MaterialTheme.colorScheme.error) }
+            }
+            Spacer(Modifier.weight(0.2f))
+            // 红色文字按钮与"放弃"分行分语义：放弃=终结保史，删除=抹账（同安排页编辑器的规矩）
+            TextButton(onClick = onDelete) {
+                Text("删除目标", color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }

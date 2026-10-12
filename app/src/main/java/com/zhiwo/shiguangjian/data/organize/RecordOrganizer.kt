@@ -2,7 +2,6 @@ package com.zhiwo.shiguangjian.data.organize
 
 import androidx.room.withTransaction
 import com.zhiwo.shiguangjian.ZhiwoApplication
-import com.zhiwo.shiguangjian.alarm.SmartScheduleManager
 import com.zhiwo.shiguangjian.data.ai.DateFormats
 import com.zhiwo.shiguangjian.data.ai.resolveCategory
 import com.zhiwo.shiguangjian.data.db.entity.MemoryEntity
@@ -21,7 +20,6 @@ class RecordOrganizer(
     private val memoryRepo: MemoryRepository
 ) {
     suspend fun applyRecordMerge(sourceIds: List<Long>, mergedTitle: String, mergedCategory: String): Boolean {
-        val completedTasksToCancel = mutableListOf<TaskEntity>()
         val applied = app.database.withTransaction {
             val sourceRecords = sourceIds.mapNotNull { recordRepo.getRecordById(it) }
             if (sourceRecords.size < 2) return@withTransaction false
@@ -40,19 +38,15 @@ class RecordOrganizer(
                 )
             )
             sourceRecords.drop(1).forEach { rec ->
+                // 合并只搬运 recordId 指向：任务一律存活（老列 isCompleted 不算"结束"），
+                // 闹钟一律不停——停铃会让每日任务明天哑火；真要结束它请走"结束任务"归档（生命周期设计 B10）
                 val tasks = taskRepo.getTasksByRecordId(rec.id).first()
-                tasks.filter { !it.isCompleted }.forEach { task ->
+                tasks.forEach { task ->
                     taskRepo.updateTask(task.copy(recordId = primary.id))
                 }
-                completedTasksToCancel += tasks.filter { it.isCompleted }
                 recordRepo.deleteRecordKeepingTasks(rec.id)
             }
             true
-        }
-        if (applied) {
-            completedTasksToCancel.forEach { task ->
-                SmartScheduleManager.cancelAlarm(app, task.id, task.calendarEventId)
-            }
         }
         return applied
     }
@@ -87,8 +81,9 @@ class RecordOrganizer(
     }
 
     suspend fun applyToMemory(sourceId: Long, memoryContent: String): Boolean {
-        val tasksToCancel = mutableListOf<TaskEntity>()
-        val applied = app.database.withTransaction {
+        // 转记忆 = 记录本体换去处（写 memories + 删 records），派生任务一律摘链存活、闹钟一律不停——
+        // 旧代码把存活任务的铃全停了，任务还在安排页却从此不响，下次开机又复活（生命周期设计 B10）
+        return app.database.withTransaction {
             val source = recordRepo.getRecordById(sourceId) ?: return@withTransaction false
             val now = DateFormats.nowDateTimeIso()
             memoryRepo.insertMemory(
@@ -100,14 +95,9 @@ class RecordOrganizer(
                     occurredAt = source.createdAt.take(10)
                 )
             )
-            tasksToCancel += taskRepo.getTasksByRecordId(sourceId).first()
             recordRepo.deleteRecordKeepingTasks(sourceId)
             true
         }
-        if (applied) {
-            tasksToCancel.forEach { task -> SmartScheduleManager.cancelAlarm(app, task.id, task.calendarEventId) }
-        }
-        return applied
     }
 
     suspend fun applyGoalToTodos(sourceId: Long, todos: List<String>): Boolean {

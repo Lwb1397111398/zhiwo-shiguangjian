@@ -214,11 +214,82 @@ class TaskScheduleEngineTest {
         assertEquals(1, r.doneCount)
     }
 
-    @Test fun MFD07_adhoc昨天补的打卡不抬高今天的分母() {
+    @Test fun MFD07_adhoc昨天判完今天彻底不再出现() {
+        // 生命周期设计 B2 的新语义：adhoc 是一次性事实，判完（done/not_done）即了结，
+        // 不再"第二天 occ 对不上就重回已过期"地 nag。旧断言（判完还留在 overdue）已被推翻。
         val t = task(id = 5, kind = "adhoc", scheduledDate = "2026-09-21")
         val r = entriesFor("2026-09-22", listOf(t), listOf(occ(5, "2026-09-21")), null)
         assertEquals(0, r.dueCount)
-        assertEquals(1, r.overdue.size + r.planned.size)
+        assertTrue(r.overdue.isEmpty() && r.planned.isEmpty())
+    }
+
+    @Test fun MFD19_归档的adhoc过期后不再赖在已过期段() {
+        // 生命周期设计 B3：过期分支必须吃 active 门控
+        val t = task(id = 6, kind = "adhoc", scheduledDate = "2026-09-20", status = "archived")
+        val r = entriesFor("2026-09-22", listOf(t), emptyList(), null)
+        assertTrue(r.overdue.isEmpty() && r.planned.isEmpty())
+    }
+
+    @Test fun MFD20_归属暂停的adhoc过期不出现_归属正常时照旧过期() {
+        val t = task(id = 7, kind = "adhoc", scheduledDate = "2026-09-20", planId = 70)
+        val paused = entriesFor("2026-09-22", listOf(t), emptyList(), null, planStatusById = mapOf(70L to "paused"))
+        assertTrue(paused.overdue.isEmpty())
+        val live = entriesFor("2026-09-22", listOf(t), emptyList(), null)
+        assertEquals(1, live.overdue.size)
+        val droppedGoal = entriesFor("2026-09-22", listOf(t.copy(planId = null, goalId = 80)), emptyList(), null,
+            goalStatusById = mapOf(80L to "abandoned"))
+        assertTrue(droppedGoal.overdue.isEmpty())
+    }
+
+    @Test fun MFD21_出现日到期限之间算待做不算过期() {
+        // 生命周期设计 B13：引擎与 adhocOverdueOn/字段文档统一口径——期限日（含）之前都还来得及
+        val t = task(id = 8, kind = "adhoc", scheduledDate = "2026-09-20", endDate = "2026-09-25")
+        val r = entriesFor("2026-09-23", listOf(t), emptyList(), null)
+        assertEquals(1, r.planned.size)
+        assertTrue(r.overdue.isEmpty())
+    }
+
+    @Test fun MFD22_当天记没做显示划线_次日判后消失() {
+        val t = task(id = 9, kind = "adhoc", scheduledDate = "2026-09-21")
+        val sameDay = entriesFor("2026-09-21", listOf(t), listOf(occ(9, "2026-09-21", "not_done")), null)
+        assertEquals(1, sameDay.planned.size)
+        assertEquals(EntryState.NOT_DONE, sameDay.planned.first().state)
+        val nextDay = entriesFor("2026-09-22", listOf(t), listOf(occ(9, "2026-09-21", "not_done")), null)
+        assertTrue(nextDay.planned.isEmpty() && nextDay.overdue.isEmpty())
+    }
+
+    @Test fun MFD23_pending撤销不算判决_任务照旧出现() {
+        val t = task(id = 10, kind = "adhoc", scheduledDate = "2026-09-20")
+        val r = entriesFor("2026-09-22", listOf(t), listOf(occ(10, "2026-09-21", "pending")), null)
+        assertEquals(1, r.overdue.size)
+    }
+
+    @Test fun MFD24_无日期adhoc判完就消失不永远赖在今天() {
+        // 生命周期设计 B5
+        val t = task(id = 11, kind = "adhoc")
+        val todayDone = entriesFor("2026-09-22", listOf(t), listOf(occ(11, "2026-09-22")), null)
+        assertEquals(1, todayDone.done.size)
+        val nextDay = entriesFor("2026-09-23", listOf(t), listOf(occ(11, "2026-09-22")), null)
+        assertTrue(nextDay.planned.isEmpty())
+    }
+
+    @Test fun MFD25_adhocJudgedTaskIds只认判决日及之前的done与not_done() {
+        val tasks = listOf(task(id = 21, kind = "adhoc"), task(id = 22, kind = "daily"))
+        val occs = listOf(occ(21, "2026-09-22", "pending"), occ(22, "2026-09-22", "done"), occ(21, "2026-09-20", "not_done"))
+        assertEquals(setOf(21L), adhocJudgedTaskIds(tasks, occs, "2026-09-22"))
+        // 判决发生在 09-20：查 09-19 及之前它还不算判过（历史那天仍"该做没做"）
+        assertEquals(emptySet<Long>(), adhocJudgedTaskIds(tasks, occs, "2026-09-19"))
+    }
+
+    @Test fun MFD26_判决之前的历史日期仍如实出现() {
+        // S02 教训的引擎层固定：昨天该做没做、今天才补勾——昨天在日记/日历里还是那条 ○，不能凭空消失
+        val t = task(id = 23, kind = "adhoc", scheduledDate = "2026-09-21", dueDate = "2026-09-21")
+        val y = entriesFor("2026-09-21", listOf(t), listOf(occ(23, "2026-09-22")), null)
+        assertEquals(1, y.planned.size)
+        val today = entriesFor("2026-09-22", listOf(t), listOf(occ(23, "2026-09-22")), null)
+        assertEquals(1, today.done.size)
+        val tomorrow = entriesFor("2026-09-23", listOf(t), listOf(occ(23, "2026-09-22")), null)
+        assertTrue(tomorrow.planned.isEmpty() && tomorrow.overdue.isEmpty())
     }
 
     // ---------- 留白 ----------

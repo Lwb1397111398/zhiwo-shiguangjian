@@ -20,6 +20,7 @@ import com.zhiwo.shiguangjian.data.tasks.OverviewPlan
 import com.zhiwo.shiguangjian.ui.theme.Warning
 import com.zhiwo.shiguangjian.ui.viewmodel.PlansOverviewState
 import com.zhiwo.shiguangjian.ui.viewmodel.PlansOverviewViewModel
+import kotlinx.coroutines.launch
 
 /**
  * 计划总览页：把"目标 → 计划 → 任务"整棵树平铺在一页里，供老板核对
@@ -36,6 +37,11 @@ fun PlansOverviewScreen(
     viewModel: PlansOverviewViewModel = viewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    /** 总览页是归档/暂停任务唯一的可触及处：恢复与彻底删除都从这走（生命周期设计 B6） */
+    var deleteTarget by remember { mutableStateOf<TaskEntity?>(null) }
+    var deleteOccCount by remember { mutableStateOf(-1) }
+    var deleteSourceRecord by remember { mutableStateOf<com.zhiwo.shiguangjian.data.db.entity.RecordEntity?>(null) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -85,8 +91,39 @@ fun PlansOverviewScreen(
                 return@Column
             }
 
-            state.blocks.forEach { block -> GoalBlockSection(block, onGoalClick, onPlanClick) }
+            state.blocks.forEach { block ->
+                GoalBlockSection(
+                    block, onGoalClick, onPlanClick,
+                    onRestore = { task -> viewModel.restoreTask(task) },
+                    onDeleteForever = { task ->
+                        deleteOccCount = -1; deleteTarget = task; deleteSourceRecord = null
+                        scope.launch {
+                            deleteOccCount = viewModel.occurrenceCount(task.id)
+                            deleteSourceRecord = viewModel.sourceRecordOf(task)
+                        }
+                    }
+                )
+            }
         }
+    }
+
+    deleteTarget?.let { task ->
+        val sourceHint = deleteSourceRecord?.let { r ->
+            "\n\n注意：这条任务来自记录《${r.title.ifBlank { r.content.take(20) }}》。删任务不会删记录——" +
+                "它会回到安排页的「杂项待办」，在那里可以直接删记录本身。"
+        } ?: ""
+        ConfirmDialog(
+            title = "彻底删除任务「${task.content}」？",
+            body = if (deleteOccCount < 0) "正在数这条任务的打卡记录…"
+            else "这会删掉任务本身、它的 $deleteOccCount 条打卡记录和提醒，删完找不回来。" +
+                "只是不想再排它的话，改选「结束任务」留在安排页——历史保得住，这里还能恢复。$sourceHint",
+            confirmText = "确认删除",
+            onConfirm = {
+                // 还没数完不许删：用户必须看到真实条数才能确认（不变量 §三-7）
+                if (deleteOccCount >= 0) { viewModel.deleteTask(task); deleteTarget = null }
+            },
+            onDismiss = { deleteTarget = null }
+        )
     }
 }
 
@@ -94,7 +131,9 @@ fun PlansOverviewScreen(
 private fun GoalBlockSection(
     block: OverviewGoal,
     onGoalClick: (Long) -> Unit,
-    onPlanClick: (Long) -> Unit
+    onPlanClick: (Long) -> Unit,
+    onRestore: (TaskEntity) -> Unit,
+    onDeleteForever: (TaskEntity) -> Unit
 ) {
     Column(Modifier.padding(top = 18.dp)) {
         if (block.goal != null) {
@@ -140,7 +179,7 @@ private fun GoalBlockSection(
             )
         }
 
-        block.plans.forEach { PlanLine(it, onPlanClick) }
+        block.plans.forEach { PlanLine(it, onPlanClick, onRestore, onDeleteForever) }
         if (block.directTasks.isNotEmpty()) {
             Text(
                 "计划外的任务",
@@ -148,13 +187,18 @@ private fun GoalBlockSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
             )
-            block.directTasks.forEach { TaskBullet(it) }
+            block.directTasks.forEach { TaskBullet(it, onRestore, onDeleteForever) }
         }
     }
 }
 
 @Composable
-private fun PlanLine(row: OverviewPlan, onPlanClick: (Long) -> Unit) {
+private fun PlanLine(
+    row: OverviewPlan,
+    onPlanClick: (Long) -> Unit,
+    onRestore: (TaskEntity) -> Unit,
+    onDeleteForever: (TaskEntity) -> Unit
+) {
     val plan = row.plan
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
@@ -187,7 +231,7 @@ private fun PlanLine(row: OverviewPlan, onPlanClick: (Long) -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            row.tasks.forEach { TaskBullet(it) }
+            row.tasks.forEach { TaskBullet(it, onRestore, onDeleteForever) }
             if (row.tasks.isEmpty()) {
                 Text(
                     "（还没往里放任务）",
@@ -200,9 +244,14 @@ private fun PlanLine(row: OverviewPlan, onPlanClick: (Long) -> Unit) {
     }
 }
 
-/** 任务一行小字：名字 + 类型 + 状态注脚，核对用的最小信息量 */
+/** 任务一行小字：名字 + 类型 + 状态注脚，核对用的最小信息量；
+ *  恢复/彻底删除两个动作出口也挂在这里（生命周期设计不变量 §三-1，B6 的修复） */
 @Composable
-private fun TaskBullet(task: TaskEntity) {
+private fun TaskBullet(
+    task: TaskEntity,
+    onRestore: (TaskEntity) -> Unit,
+    onDeleteForever: (TaskEntity) -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -225,6 +274,14 @@ private fun TaskBullet(task: TaskEntity) {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        if (task.status != "active") {
+            TextButton(onClick = { onRestore(task) }) {
+                Text("恢复", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+        TextButton(onClick = { onDeleteForever(task) }) {
+            Text("删除", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+        }
     }
 }
 

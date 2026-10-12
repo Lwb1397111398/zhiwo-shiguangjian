@@ -5,7 +5,6 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.zhiwo.shiguangjian.ZhiwoApplication
-import com.zhiwo.shiguangjian.alarm.SmartScheduleManager
 import com.zhiwo.shiguangjian.data.ai.DateFormats
 import com.zhiwo.shiguangjian.data.ai.RecordAnalysisResult
 import com.zhiwo.shiguangjian.data.ai.RecordMergeItem
@@ -121,8 +120,8 @@ class RecordListViewModel(application: Application) : AndroidViewModel(applicati
                 val task = taskRepo.getTaskById(taskId) ?: return@launch
                 bridge.check(task, DateFormats.nowDate(), DateFormats.nowDateTimeIso())
                 task.recordId?.let { recordId -> checkAndMoveCompleted(recordId) }
-                // 取消对应的提醒闹钟
-                SmartScheduleManager.cancelAlarm(app, taskId, task.calendarEventId)
+                // 不停闹钟（生命周期设计不变量 §三-4）：当天误响由 ReminderGate 挡；
+                // 这里一 cancel，每日/每周任务的重复铃就永久哑了
             } catch (e: Throwable) {
                 Log.e("RecordListVM", "completeTask failed", e)
             }
@@ -226,9 +225,8 @@ class RecordListViewModel(application: Application) : AndroidViewModel(applicati
     fun deleteRecord(id: Long, onSuccess: (() -> Unit)? = null, onError: ((String) -> Unit)? = null) {
         viewModelScope.launch {
             try {
-                // 删除前取消关联任务的闹钟
-                val tasks = taskRepo.getTasksByRecordId(id).first()
-                tasks.forEach { SmartScheduleManager.cancelAlarm(app, it.id, it.calendarEventId) }
+                // 删记录只摘链保任务（生命周期设计 §四）：任务还活着就还得响，
+                // 旧代码在这里把存活任务的闹钟一并停掉——每日任务从此哑火、重启又复活，状态自相矛盾
                 recordRepo.deleteRecordKeepingTasks(id)
                 onSuccess?.invoke()
             } catch (e: Throwable) {

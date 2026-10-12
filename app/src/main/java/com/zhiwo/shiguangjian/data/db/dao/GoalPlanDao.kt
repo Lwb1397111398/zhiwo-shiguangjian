@@ -51,7 +51,4 @@ interface PlanDao {
 
     @Query("DELETE FROM plans WHERE id = :id")
     suspend fun deleteById(id: Long)
-
-    @Query("DELETE FROM plans WHERE goalId = :goalId")
-    suspend fun deleteByGoal(goalId: Long)
 }

@@ -17,6 +17,8 @@ import com.zhiwo.shiguangjian.data.festival.HolidayCalendar
 import com.zhiwo.shiguangjian.data.repository.TaskOccurrenceRepository
 import com.zhiwo.shiguangjian.data.repository.TaskWriteBridge
 import com.zhiwo.shiguangjian.data.tasks.DayType
+import com.zhiwo.shiguangjian.data.tasks.adhocJudgedTaskIds
+import com.zhiwo.shiguangjian.data.tasks.adhocOverdueOn
 import com.zhiwo.shiguangjian.data.tasks.deadlineDate
 import com.zhiwo.shiguangjian.data.tasks.ProgressOwner
 import com.zhiwo.shiguangjian.data.tasks.ProgressSpan
@@ -184,13 +186,26 @@ class GoalDetailViewModel(application: Application) : AndroidViewModel(applicati
         )
     }
 
-    /** 逾期 = 临时任务过了它那天（无 scheduledDate 时看期限）还没有任何完成记录 */
+    /** 逾期 = 临时任务已过期限（含无出现日时看期限）且还没记下任何结论。
+     *  判据与安排页"已过期"段同源：引擎的 adhocJudgedTaskIds + adhocOverdueOn（生命周期设计 B4/B13） */
     private fun overdueAdhoc(tasks: List<TaskEntity>, occs: List<TaskOccurrenceEntity>): Int {
-        val doneIds = occs.filter { it.status == "done" }.map { it.taskId }.toSet()
+        val judged = adhocJudgedTaskIds(tasks, occs, today)
         return tasks.count { t ->
-            val day = if (t.scheduledDate.isNotBlank()) t.scheduledDate.take(10) else t.deadlineDate
             t.kind.trim().lowercase() == "adhoc" && t.status.trim().lowercase() == "active" &&
-                t.id !in doneIds && day.isNotBlank() && day < today
+                t.id !in judged && adhocOverdueOn(t, today)
+        }
+    }
+
+    /**
+     * 物理删除目标（生命周期设计 §2.5）：其下计划与直属任务只摘链（goalId→NULL）转自由，
+     * 打卡史整体保留——删除不连坐，和 deletePlan 同一语义。
+     * 外键已是 SET NULL，仍手动摘链：与既有路径一致，不赌级联、失败语义清楚。
+     */
+    fun deleteGoal(goal: GoalEntity) = viewModelScope.launch {
+        db.withTransaction {
+            planDao.detachFromGoal(goal.id)
+            taskDao.detachTasksFromGoal(goal.id)
+            goalDao.deleteById(goal.id)
         }
     }
 
@@ -242,8 +257,10 @@ class GoalDetailViewModel(application: Application) : AndroidViewModel(applicati
                         day.isNotBlank() && day <= today
                     if (owed) occurrences.setCheck(task.id, day, "not_done", "changed", note, now = now)
                 } else {
-                    // 归档后引擎不再排它，历史漏做也随之消失；今天这条 not_done 只是把当天坐实
-                    if (achieved) bridge.archive(task) else taskDao.updateTask(task.copy(status = "archived"))
+                    // 归档后引擎不再排它，历史漏做也随之消失；今天这条 not_done 只是把当天坐实。
+                    // 两个结局都走 bridge.archive：老列 isPermanentlyCompleted 必须同步镜像，
+                    // 否则放弃分支的归档在老读路径眼里不完整（生命周期设计 B8）
+                    bridge.archive(task)
                     val doneToday = snap.occurrences.any {
                         it.taskId == task.id && it.status == "done" && it.date == today
                     }

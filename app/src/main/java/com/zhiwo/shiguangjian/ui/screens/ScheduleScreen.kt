@@ -65,6 +65,9 @@ fun ScheduleScreen(
     var showingPrefs by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<TaskEntity?>(null) }
     var deleteOccCount by remember { mutableStateOf(-1) }
+    /** 删除确认里如实提示：任务若由记录派生，删任务后记录会回杂项（生命周期设计 B1） */
+    var deleteSourceRecord by remember { mutableStateOf<com.zhiwo.shiguangjian.data.db.entity.RecordEntity?>(null) }
+    var miscDeleteTarget by remember { mutableStateOf<com.zhiwo.shiguangjian.data.db.entity.RecordEntity?>(null) }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -116,7 +119,9 @@ fun ScheduleScreen(
                                 MiscTodoRow(
                                     title = record.title.ifBlank { record.content.take(40) },
                                     onCheck = { viewModel.completeRecord(record) },
-                                    onConvert = { viewModel.convertRecordToTask(record) }
+                                    onConvert = { viewModel.convertRecordToTask(record) },
+                                    onDelete = { miscDeleteTarget = record },
+                                    onOpen = { onRecordClick(record.id) }
                                 )
                             }
                         } else {
@@ -197,10 +202,14 @@ fun ScheduleScreen(
                 initial = editing,
                 defaultDate = viewModel.todayNow(),
                 onDelete = { task -> viewModel.setStatus(task, "archived"); creating = false; editing = null },
+                onPause = { task -> viewModel.setStatus(task, "paused"); creating = false; editing = null },
                 onDeleteForever = { task ->
                     creating = false; editing = null
-                    deleteOccCount = -1; deleteTarget = task
-                    scope.launch { deleteOccCount = viewModel.occurrenceCount(task.id) }
+                    deleteOccCount = -1; deleteTarget = task; deleteSourceRecord = null
+                    scope.launch {
+                        deleteOccCount = viewModel.occurrenceCount(task.id)
+                        deleteSourceRecord = viewModel.sourceRecordOf(task)
+                    }
                 },
                 onSave = { task -> viewModel.saveTask(task); creating = false; editing = null }
             )
@@ -208,17 +217,32 @@ fun ScheduleScreen(
     }
 
     deleteTarget?.let { task ->
+        val sourceHint = deleteSourceRecord?.let { r ->
+            "\n\n注意：这条任务来自记录《${r.title.ifBlank { r.content.take(20) }}》。删任务不会删记录——" +
+                "它会回到「杂项待办」，在那里可以直接删记录本身。"
+        } ?: ""
         ConfirmDialog(
             title = "彻底删除任务「${task.content}」？",
             body = if (deleteOccCount < 0) "正在数这条任务的打卡记录…"
             else "这会删掉任务本身、它的 $deleteOccCount 条打卡记录和提醒，删完找不回来。" +
-                "只是这阵子不做了的话，关掉这里改选「结束任务」——记录留着，随时能恢复。",
+                "只是这阵子不做了的话，关掉这里改选「结束任务」——记录留着，随时能恢复。$sourceHint",
             confirmText = "确认删除",
             onConfirm = {
                 // 还没数完不许删：用户必须看到真实条数才能确认
                 if (deleteOccCount >= 0) { viewModel.deleteTask(task); deleteTarget = null }
             },
             onDismiss = { deleteTarget = null }
+        )
+    }
+
+    miscDeleteTarget?.let { record ->
+        ConfirmDialog(
+            title = "删除记录《${record.title.ifBlank { record.content.take(20) }}》？",
+            body = "这条待办只存在于记录里（没有派生任务）。删除会把记录本体从记录页一起去掉，找不回来。" +
+                "只是不想在安排页看到它的话，用勾选完成——那会把它归入「已完成」类别，记录页还留着原文。",
+            confirmText = "确认删除",
+            onConfirm = { viewModel.deleteRecord(record); miscDeleteTarget = null },
+            onDismiss = { miscDeleteTarget = null }
         )
     }
 
@@ -395,6 +419,7 @@ private fun TaskEditorSheet(
     defaultDate: String,
     onSave: (TaskEntity) -> Unit,
     onDelete: (TaskEntity) -> Unit,
+    onPause: (TaskEntity) -> Unit,
     onDeleteForever: (TaskEntity) -> Unit
 ) {
     var content by remember(initial) { mutableStateOf(initial?.content ?: "") }
@@ -505,6 +530,10 @@ private fun TaskEditorSheet(
             if (initial != null) {
                 OutlinedButton(onClick = { onDelete(initial) }) { Text("结束任务") }
             }
+            if (initial != null && initial.status.trim().lowercase() == "active") {
+                // 暂停：排期不再出现、提醒停掉，但随时可从总览页恢复（生命周期设计 B7）
+                OutlinedButton(onClick = { onPause(initial) }) { Text("暂停") }
+            }
         }
         if (initial != null) {
             // 与"结束任务"分开一行、分开语义：归档保史，删除抹史，别让人按错
@@ -579,10 +608,21 @@ fun DatePickerDialogField(
     )
 }
 
+/**
+ * 杂项待办行（生命周期设计 §2.3"每一行可见项都有出口"）：
+ * 勾选完成（归类不动本体）/ 转为任务 / 删除记录（确认框兜底）/ 点整行看原文——四路都通。
+ */
 @Composable
-private fun MiscTodoRow(title: String, onCheck: () -> Unit, onConvert: () -> Unit) {
+private fun MiscTodoRow(
+    title: String,
+    onCheck: () -> Unit,
+    onConvert: () -> Unit,
+    onDelete: () -> Unit,
+    onOpen: () -> Unit
+) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+            .clickable(onClick = onOpen),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
     ) {
@@ -590,6 +630,9 @@ private fun MiscTodoRow(title: String, onCheck: () -> Unit, onConvert: () -> Uni
             Checkbox(checked = false, onCheckedChange = { onCheck() })
             Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
             TextButton(onClick = onConvert) { Text("转为任务") }
+            TextButton(onClick = onDelete) {
+                Text("删除", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }

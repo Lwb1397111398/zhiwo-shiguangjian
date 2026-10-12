@@ -13,6 +13,8 @@ import com.zhiwo.shiguangjian.data.db.entity.SettingEntity
 import com.zhiwo.shiguangjian.data.db.entity.TaskEntity
 import com.zhiwo.shiguangjian.data.db.entity.TaskOccurrenceEntity
 import com.zhiwo.shiguangjian.data.festival.HolidayCalendar
+import com.zhiwo.shiguangjian.data.repository.RecordRepository
+import com.zhiwo.shiguangjian.data.repository.TaskLifecycle
 import com.zhiwo.shiguangjian.data.repository.TaskOccurrenceRepository
 import com.zhiwo.shiguangjian.data.repository.TaskWriteBridge
 import com.zhiwo.shiguangjian.data.settings.ScheduleDisplayPrefs
@@ -21,7 +23,6 @@ import com.zhiwo.shiguangjian.data.tasks.DayEntry
 import com.zhiwo.shiguangjian.data.tasks.DayType
 import com.zhiwo.shiguangjian.data.tasks.EntrySection
 import com.zhiwo.shiguangjian.data.tasks.EntryState
-import com.zhiwo.shiguangjian.data.tasks.ScheduleConstants
 import com.zhiwo.shiguangjian.data.tasks.dayTypeOf
 import com.zhiwo.shiguangjian.data.tasks.dayTypeOrWeekend
 import com.zhiwo.shiguangjian.data.tasks.entriesFor
@@ -74,6 +75,9 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     private val db = (application as ZhiwoApplication).database
     private val bridge = TaskWriteBridge(db)
     private val occurrencesRepo = TaskOccurrenceRepository(db)
+    private val recordRepo = RecordRepository(
+        db, db.recordDao(), db.taskDao(), db.tagDao(), db.keyInfoDao()
+    )
 
     val today: String = DateFormats.nowDate()
 
@@ -84,7 +88,9 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
 
     private val sources: StateFlow<ScheduleSources> = combine(
         db.taskDao().getAllTasks(),
-        db.occurrenceDao().observeInRange(rangeStart(today), today),
+        // 判后了结要看历史（生命周期设计 §2.1）：观察范围从"近30天"放宽为全量，
+        // 漏做回看仍由引擎按 MISSED_LOOKBACK_DAYS 自己截
+        db.occurrenceDao().observeInRange("1970-01-01", today),
         db.dayOverrideDao().getAll(),
         db.planDao().getAllPlans(),
         db.goalDao().getAllGoals()
@@ -113,7 +119,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         val plan = entriesFor(
             date = today,
             tasks = src.tasks,
-            occurrences = src.occurrences.filter { it.date == today },
+            occurrences = src.occurrences,
             dayType = resolverFor(today, overrideByDate),
             planStatusById = src.plans.associate { it.id to it.status },
             goalStatusById = src.goals.associate { it.id to it.status }
@@ -220,59 +226,30 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
 
     fun saveTask(task: TaskEntity) = viewModelScope.launch {
         val id = bridge.saveTask(task)
-        // 提醒只在 remindTime 非空时注册；archived/paused 一律取消，避免僵尸闹钟
-        val saved = db.taskDao().getTaskById(if (id > 0) id else task.id) ?: return@launch
-        if (saved.remindTime.isBlank() || saved.status != "active") {
-            com.zhiwo.shiguangjian.alarm.SmartScheduleManager.cancelAlarm(
-                getApplication(), saved.id, saved.calendarEventId
-            )
-        } else {
-            val autoCalendar = db.settingDao().getSettingValue("autoCalendarSync") != "false"
-            val (eventId, _) = com.zhiwo.shiguangjian.alarm.SmartScheduleManager.scheduleTask(
-                context = getApplication(),
-                taskId = saved.id,
-                taskContent = saved.content,
-                taskType = saved.taskType,
-                dueDate = saved.dueDate,
-                recordTitle = saved.recordId?.let { recordTitleOf(it) } ?: "手动新建",
-                syncCalendar = autoCalendar
-            )
-            // 建了日历就必须回写 id，否则下次取消删不掉它（重复事件）
-            if (eventId != null && eventId != saved.calendarEventId) {
-                db.taskDao().updateTask(saved.copy(calendarEventId = eventId))
-            }
-        }
+        // 提醒只在 remindTime 非空且 active 时注册；其余情况反向清干净（编排的唯一出处 TaskLifecycle）
+        TaskLifecycle.registerReminder(db, getApplication(), if (id > 0) id else task.id)
     }
 
-    private suspend fun recordTitleOf(recordId: Long): String? =
-        db.recordDao().getRecordById(recordId)?.title
-
     /**
-     * 真删除：先停闹钟和系统日历事件，再删任务行。
+     * 真删除（编排唯一出处 TaskLifecycle.deleteForever）：先停闹钟和系统日历事件，再删任务行。
      * 打卡记录（task_occurrences）按外键 CASCADE 一起走——这正是要在确认框里如实报数、
      * 把"结束任务（保史）"留给不想抹掉历史的用户的缘故。
      */
     fun deleteTask(task: TaskEntity) = viewModelScope.launch {
-        com.zhiwo.shiguangjian.alarm.SmartScheduleManager.cancelAlarm(
-            getApplication(), task.id, task.calendarEventId
-        )
-        db.taskDao().deleteTaskById(task.id)
+        TaskLifecycle.deleteForever(db, getApplication(), task)
     }
 
+    /** 任务挂着的来源记录（删除前提示用）；null=手动新建或记录已被删 */
+    suspend fun sourceRecordOf(task: TaskEntity): RecordEntity? =
+        task.recordId?.let { db.recordDao().getRecordById(it) }
+
     fun setStatus(task: TaskEntity, status: String) = viewModelScope.launch {
-        when (status) {
-            "archived" -> bridge.archive(task)
-            "paused" -> bridge.pause(task)
-            else -> bridge.resume(task)
-        }
-        // 暂停/结束必须同时停掉提醒，否则"结束任务"之后每天照样响
-        if (status != "active") {
-            com.zhiwo.shiguangjian.alarm.SmartScheduleManager.cancelAlarm(
-                getApplication(), task.id, task.calendarEventId
-            )
-        } else {
-            saveTask(task)
-        }
+        TaskLifecycle.changeStatus(db, getApplication(), task, status)
+    }
+
+    /** 删除杂项待办的来源记录（物理删除，确认框负责报语义）；若并发中冒出派生任务也只摘链、不牵连 */
+    fun deleteRecord(record: RecordEntity) = viewModelScope.launch {
+        recordRepo.deleteRecordKeepingTasks(record.id)
     }
 
     /** 把"只在记录里的待办"变成真任务：记录保留，只多一条挂着它的任务 */
@@ -320,9 +297,6 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
             try { LocalDate.parse(date.take(10), ISO) } catch (_: Exception) { null }
 
         fun yearOf(date: String): Int = parse(date)?.year ?: LocalDate.now().year
-
-        private fun rangeStart(today: String): String =
-            parse(today)?.minusDays(ScheduleConstants.MISSED_LOOKBACK_DAYS.toLong())?.toString() ?: today
 
         private fun groupOf(section: EntrySection) = when (section) {
             EntrySection.DAILY_FIXED -> ScheduleSectionGroup.DAILY_FIXED

@@ -225,7 +225,19 @@ fun MainApp() {
                         }
                     },
                     onPlanClick = { planId -> navController.navigate("plan_detail/$planId") },
-                    onGoalClick = { goalId -> navController.navigate("goal_detail/$goalId") }
+                    onGoalClick = { goalId -> navController.navigate("goal_detail/$goalId") },
+                    onShowAllPlans = { navController.navigate("plans") { launchSingleTop = true } }
+                )
+            }
+
+            // 计划总览：整棵"目标→计划→任务"树平铺，供老板核对全量内容
+            composable("plans") {
+                PlansOverviewScreen(
+                    onBack = { navController.popBackStack() },
+                    onPlanClick = { planId -> navController.navigate("plan_detail/$planId") },
+                    onGoalClick = { goalId -> navController.navigate("goal_detail/$goalId") },
+                    onAddGoal = { navController.navigate("goal_edit?goalId=0") },
+                    onAddPlan = { navController.navigate("plan_edit?planId=0&goalId=0") }
                 )
             }
 

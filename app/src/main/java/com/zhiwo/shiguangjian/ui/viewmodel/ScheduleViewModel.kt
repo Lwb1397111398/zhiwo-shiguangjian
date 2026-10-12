@@ -247,6 +247,18 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     private suspend fun recordTitleOf(recordId: Long): String? =
         db.recordDao().getRecordById(recordId)?.title
 
+    /**
+     * 真删除：先停闹钟和系统日历事件，再删任务行。
+     * 打卡记录（task_occurrences）按外键 CASCADE 一起走——这正是要在确认框里如实报数、
+     * 把"结束任务（保史）"留给不想抹掉历史的用户的缘故。
+     */
+    fun deleteTask(task: TaskEntity) = viewModelScope.launch {
+        com.zhiwo.shiguangjian.alarm.SmartScheduleManager.cancelAlarm(
+            getApplication(), task.id, task.calendarEventId
+        )
+        db.taskDao().deleteTaskById(task.id)
+    }
+
     fun setStatus(task: TaskEntity, status: String) = viewModelScope.launch {
         when (status) {
             "archived" -> bridge.archive(task)

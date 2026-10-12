@@ -31,6 +31,7 @@ import com.zhiwo.shiguangjian.ui.theme.Success
 import com.zhiwo.shiguangjian.ui.viewmodel.ScheduleSectionGroup
 import com.zhiwo.shiguangjian.ui.viewmodel.ScheduleUiState
 import com.zhiwo.shiguangjian.ui.viewmodel.ScheduleViewModel
+import kotlinx.coroutines.launch
 
 private val SECTION_TITLES = mapOf(
     ScheduleSectionGroup.DAILY_FIXED to "每日 · 固定",
@@ -48,6 +49,7 @@ fun ScheduleScreen(
     onRecordClick: (Long) -> Unit,
     onPlanClick: (Long) -> Unit = {},
     onGoalClick: (Long) -> Unit = {},
+    onShowAllPlans: () -> Unit = {},
     viewModel: ScheduleViewModel = viewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -61,6 +63,9 @@ fun ScheduleScreen(
     var fillDate by remember { mutableStateOf(state.today) }
     var notDoneDate by remember { mutableStateOf(state.today) }
     var showingPrefs by remember { mutableStateOf(false) }
+    var deleteTarget by remember { mutableStateOf<TaskEntity?>(null) }
+    var deleteOccCount by remember { mutableStateOf(-1) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -134,6 +139,18 @@ fun ScheduleScreen(
                     }
 
                     // ---- 下面两段是层级入口（计划 / 目标），不参与今日完成率 ----
+                    item(key = "sec-plans-all") {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("想核对全部的目标、计划和任务？",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f))
+                            TextButton(onClick = onShowAllPlans) { Text("我的计划 ›") }
+                        }
+                    }
                     if (activePlans.isNotEmpty()) {
                         item(key = "sec-plans") {
                             SectionHeader("进行中的计划", activePlans.size, done = false)
@@ -180,9 +197,29 @@ fun ScheduleScreen(
                 initial = editing,
                 defaultDate = viewModel.todayNow(),
                 onDelete = { task -> viewModel.setStatus(task, "archived"); creating = false; editing = null },
+                onDeleteForever = { task ->
+                    creating = false; editing = null
+                    deleteOccCount = -1; deleteTarget = task
+                    scope.launch { deleteOccCount = viewModel.occurrenceCount(task.id) }
+                },
                 onSave = { task -> viewModel.saveTask(task); creating = false; editing = null }
             )
         }
+    }
+
+    deleteTarget?.let { task ->
+        ConfirmDialog(
+            title = "彻底删除任务「${task.content}」？",
+            body = if (deleteOccCount < 0) "正在数这条任务的打卡记录…"
+            else "这会删掉任务本身、它的 $deleteOccCount 条打卡记录和提醒，删完找不回来。" +
+                "只是这阵子不做了的话，关掉这里改选「结束任务」——记录留着，随时能恢复。",
+            confirmText = "确认删除",
+            onConfirm = {
+                // 还没数完不许删：用户必须看到真实条数才能确认
+                if (deleteOccCount >= 0) { viewModel.deleteTask(task); deleteTarget = null }
+            },
+            onDismiss = { deleteTarget = null }
+        )
     }
 
     fillTarget?.let { entry ->
@@ -357,7 +394,8 @@ private fun TaskEditorSheet(
     initial: TaskEntity?,
     defaultDate: String,
     onSave: (TaskEntity) -> Unit,
-    onDelete: (TaskEntity) -> Unit
+    onDelete: (TaskEntity) -> Unit,
+    onDeleteForever: (TaskEntity) -> Unit
 ) {
     var content by remember(initial) { mutableStateOf(initial?.content ?: "") }
     var kind by remember(initial) { mutableStateOf(initial?.kind ?: "daily") }
@@ -466,6 +504,13 @@ private fun TaskEditorSheet(
             ) { Text("保存") }
             if (initial != null) {
                 OutlinedButton(onClick = { onDelete(initial) }) { Text("结束任务") }
+            }
+        }
+        if (initial != null) {
+            // 与"结束任务"分开一行、分开语义：归档保史，删除抹史，别让人按错
+            TextButton(onClick = { onDeleteForever(initial) }) {
+                Text("删除任务（连打卡记录一起删）", color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall)
             }
         }
     }

@@ -20,7 +20,7 @@ import com.zhiwo.shiguangjian.ui.viewmodel.PlanDetailViewModel
 
 /**
  * 目标 / 计划的新建与编辑。同一个文件两套表单，字段差别不大但落库的表不同。
- * 日期一律走 DatePickerDialogField（material3 1.2.0 没有 DatePickerDialog，只能 AlertDialog + DatePicker）。
+ * 日期一律走 DatePickerDialogField（material3 的 DatePickerDialog，自带 usePlatformDefaultWidth=false，防日历被压窄）。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

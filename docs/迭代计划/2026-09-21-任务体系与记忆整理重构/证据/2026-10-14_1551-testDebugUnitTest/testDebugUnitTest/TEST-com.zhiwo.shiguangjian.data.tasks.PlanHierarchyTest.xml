@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.tasks.PlanHierarchyTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-14T07:52:25" hostname="文彬三号" time="0.016">
+  <properties/>
+  <testcase name="没有无主内容时不出现自由块" classname="com.zhiwo.shiguangjian.data.tasks.PlanHierarchyTest" time="0.014"/>
+  <testcase name="无主计划与无主任务进最后一块 归档的也在" classname="com.zhiwo.shiguangjian.data.tasks.PlanHierarchyTest" time="0.0"/>
+  <testcase name="每个目标一块 计划挂对归属" classname="com.zhiwo.shiguangjian.data.tasks.PlanHierarchyTest" time="0.001"/>
+  <testcase name="引用已不存在目标的计划与任务不丢" classname="com.zhiwo.shiguangjian.data.tasks.PlanHierarchyTest" time="0.0"/>
+  <testcase name="目标下计划外直挂任务单列" classname="com.zhiwo.shiguangjian.data.tasks.PlanHierarchyTest" time="0.0"/>
+  <testcase name="块内任务进行中的排前面" classname="com.zhiwo.shiguangjian.data.tasks.PlanHierarchyTest" time="0.001"/>
+  <testcase name="进行中目标在前 达成其次 放弃垫底" classname="com.zhiwo.shiguangjian.data.tasks.PlanHierarchyTest" time="0.0"/>
+  <testcase name="块内计划按状态再按起始日新到旧" classname="com.zhiwo.shiguangjian.data.tasks.PlanHierarchyTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

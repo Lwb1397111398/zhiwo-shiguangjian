@@ -814,7 +814,9 @@ fun DatePickerDialogField(
                 .toInstant(java.time.ZoneOffset.UTC).toEpochMilli()
         }
     )
-    AlertDialog(
+    // 必须用 DatePickerDialog 而不是普通 AlertDialog：DatePicker 需要 360dp 定宽，
+    // 普通对话框 usePlatformDefaultWidth 会把宽度压窄导致日历右侧被裁。
+    DatePickerDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = {
@@ -823,9 +825,10 @@ fun DatePickerDialogField(
                 } ?: onDismiss()
             }) { Text("确定") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
-        text = { DatePicker(state = state) }
-    )
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+    ) {
+        DatePicker(state = state)
+    }
 }
 
 /**

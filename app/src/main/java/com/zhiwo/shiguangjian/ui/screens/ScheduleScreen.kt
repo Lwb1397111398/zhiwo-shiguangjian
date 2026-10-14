@@ -186,7 +186,7 @@ fun ScheduleScreen(
                         }
                     }
 
-                    // ---- 下面两段是层级入口（计划 / 目标），不参与今日完成率 ----
+                    // ---- 层级入口（原"进行中的计划""目标"两栏合一）：目标卡下列它名下的进行中计划，不参与今日完成率 ----
                     item(key = "sec-plans-all") {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
@@ -199,28 +199,42 @@ fun ScheduleScreen(
                             TextButton(onClick = onShowAllPlans) { Text("我的计划 ›") }
                         }
                     }
-                    if (activePlans.isNotEmpty()) {
-                        item(key = "sec-plans") {
-                            SectionHeader("进行中的计划", activePlans.size, done = false)
-                        }
-                        items(activePlans, key = { "plan-${it.id}" }) { plan ->
-                            HierarchyCard(
-                                title = plan.title,
-                                subtitle = "${plan.startDate.ifBlank { "未设起" }} ~ ${plan.endDate.ifBlank { "未设止" }}",
-                                onClick = { onPlanClick(plan.id) }
+                    // 不在任何进行中目标名下的计划（无归属 / 目标已暂停或终结）单独兜底展示
+                    val orphanPlans = activePlans.filter { plan ->
+                        plan.goalId == null || activeGoals.none { it.id == plan.goalId }
+                    }
+                    item(key = "sec-goal-plans") {
+                        SectionHeader("目标与进行中的计划", activeGoals.size + orphanPlans.size, done = false)
+                    }
+                    activeGoals.forEach { goal ->
+                        item(key = "goal-" + goal.id) {
+                            GoalWithPlansCard(
+                                goal = goal,
+                                plans = activePlans.filter { it.goalId == goal.id },
+                                onGoalClick = { onGoalClick(goal.id) },
+                                onPlanClick = onPlanClick
                             )
                         }
                     }
-                    if (activeGoals.isNotEmpty()) {
-                        item(key = "sec-goals") {
-                            SectionHeader("目标", activeGoals.size, done = false)
-                        }
-                        items(activeGoals, key = { "goal-${it.id}" }) { goal ->
-                            HierarchyCard(
-                                title = goal.title,
-                                subtitle = if (goal.targetDate.isBlank()) "长期目标" else "截止 ${goal.targetDate}",
-                                onClick = { onGoalClick(goal.id) }
-                            )
+                    if (orphanPlans.isNotEmpty()) {
+                        item(key = "goal-orphan-plans") {
+                            Column {
+                                if (activeGoals.isNotEmpty()) {
+                                    Text(
+                                        "没挂在进行中目标下的计划",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(start = 28.dp, top = 8.dp)
+                                    )
+                                }
+                                orphanPlans.forEach { plan ->
+                                    HierarchyCard(
+                                        title = plan.title,
+                                        subtitle = "${plan.startDate.ifBlank { "未设起" }} ~ ${plan.endDate.ifBlank { "未设止" }}",
+                                        onClick = { onPlanClick(plan.id) }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -244,6 +258,7 @@ fun ScheduleScreen(
             TaskEditorSheet(
                 initial = editing,
                 defaultDate = viewModel.todayNow(),
+                planPreset = null,
                 onDelete = { task -> viewModel.setStatus(task, "archived"); creating = false; editing = null },
                 onPause = { task -> viewModel.setStatus(task, "paused"); creating = false; editing = null },
                 onDeleteForever = { task ->
@@ -466,6 +481,63 @@ private fun HierarchyCard(title: String, subtitle: String, onClick: () -> Unit) 
     }
 }
 
+/**
+ * 目标卡 + 名下进行中的计划直接列在卡下（原来"目标""进行中的计划"两栏合一）。
+ * 点目标行进目标详情，点计划行进计划详情。
+ */
+@Composable
+private fun GoalWithPlansCard(
+    goal: com.zhiwo.shiguangjian.data.db.entity.GoalEntity,
+    plans: List<com.zhiwo.shiguangjian.data.db.entity.PlanEntity>,
+    onGoalClick: () -> Unit,
+    onPlanClick: (Long) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+            .clickable(onClick = onGoalClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+    ) {
+        Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(goal.title.ifBlank { "未命名目标" }, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    if (goal.targetDate.isBlank()) "长期目标" else "截止 ${goal.targetDate}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                if (plans.isEmpty()) "还没挂计划 ›" else "${plans.size} 个进行中计划 ›",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+    plans.forEach { plan ->
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable { onPlanClick(plan.id) }
+                .padding(start = 30.dp, end = 20.dp, top = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("└", style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                plan.title.ifBlank { "未命名计划" },
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                "${plan.startDate.ifBlank { "未设起" }} ~ ${plan.endDate.ifBlank { "未设止" }}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
 @Composable
 private fun SectionHeader(title: String, count: Int, done: Boolean) {
     Row(
@@ -537,24 +609,34 @@ private fun TaskRow(
     }
 }
 
+/**
+ * 任务新建/编辑器——安排页与计划详情页共用（计划页进来时带 planPreset：起止日期预填、新任务自动挂到该计划下）。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TaskEditorSheet(
+internal fun TaskEditorSheet(
     initial: TaskEntity?,
     defaultDate: String,
     onSave: (TaskEntity) -> Unit,
-    onDelete: (TaskEntity) -> Unit,
-    onPause: (TaskEntity) -> Unit,
-    onDeleteForever: (TaskEntity) -> Unit
+    onDelete: (TaskEntity) -> Unit = {},
+    onPause: (TaskEntity) -> Unit = {},
+    onDeleteForever: (TaskEntity) -> Unit = {},
+    /** 计划详情页新建任务时的预设：开始/结束预填计划的区间，保存时挂 planId/goalId */
+    planPreset: com.zhiwo.shiguangjian.data.db.entity.PlanEntity? = null
 ) {
     var content by remember(initial) { mutableStateOf(initial?.content ?: "") }
     var kind by remember(initial) { mutableStateOf(initial?.kind ?: "daily") }
     var repeatRule by remember(initial) { mutableStateOf(initial?.repeatRule ?: "everyday") }
     var dayPolicy by remember(initial) { mutableStateOf(initial?.dayPolicy ?: "all") }
-    var startDate by remember(initial) { mutableStateOf(initial?.startDate ?: "") }
+    var startDate by remember(initial) {
+        mutableStateOf(initial?.startDate ?: planPreset?.startDate ?: "")
+    }
     // adhoc 的"最后期限"存在这里：新写 endDate，v14 之前同时镜像到老 dueDate（回滚到 v13 代码也不坏）
     var endDate by remember(initial) {
-        mutableStateOf(if (initial?.kind == "adhoc") initial.deadlineDate else initial?.endDate ?: "")
+        mutableStateOf(
+            if (initial?.kind == "adhoc") initial.deadlineDate
+            else initial?.endDate ?: planPreset?.endDate ?: ""
+        )
     }
     var scheduledDate by remember(initial) { mutableStateOf(initial?.scheduledDate ?: defaultDate) }
     var duration by remember(initial) { mutableStateOf((initial?.durationMinutes ?: 60).toString()) }
@@ -568,6 +650,13 @@ private fun TaskEditorSheet(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(if (initial == null) "新建任务" else "编辑任务", style = MaterialTheme.typography.titleLarge)
+        planPreset?.let { preset ->
+            Text(
+                "将加进计划「${preset.title.ifBlank { "未命名计划" }}」；任务的起止日期已按计划区间预填，仍可改。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         OutlinedTextField(value = content, onValueChange = { content = it },
             label = { Text("要做什么") }, singleLine = true, modifier = Modifier.fillMaxWidth())
 
@@ -603,6 +692,7 @@ private fun TaskEditorSheet(
         OutlinedTextField(value = remindTime, onValueChange = { remindTime = it.take(5) },
             label = { Text("提醒时间 HH:mm（留空不提醒）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
 
+        Text("预计时长（分钟）", style = MaterialTheme.typography.labelLarge)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(15, 30, 45, 60, 90).forEach { m ->
                 FilterChip(selected = duration == m.toString(), onClick = { duration = m.toString() },
@@ -640,6 +730,9 @@ private fun TaskEditorSheet(
                 onClick = {
                     val minutes = duration.toIntOrNull()?.coerceIn(0, 1440) ?: 0
                     val base = initial ?: TaskEntity(content = "", createdAt = DateFormats.nowDateTimeIso())
+                    // 计划页新建时挂归属（编辑既有任务则原样保留 base.planId/goalId，不动归属）
+                    val planId = planPreset?.id ?: base.planId
+                    val goalId = planPreset?.goalId ?: base.goalId
                     onSave(base.copy(
                         content = trimmed, kind = kind, repeatRule = if (kind == "daily") repeatRule else "everyday",
                         dayPolicy = if (kind == "adhoc") "all" else dayPolicy,
@@ -648,7 +741,9 @@ private fun TaskEditorSheet(
                         scheduledDate = if (kind == "adhoc") scheduledDate else "",
                         dueDate = if (kind == "adhoc") endDate else "",
                         durationMinutes = if (kind == "blank") 60 else minutes,
-                        remindTime = remindTime.takeIf { it.matches(Regex("""^([01]\d|2[0-3]):[0-5]\d$""")) } ?: ""
+                        remindTime = remindTime.takeIf { it.matches(Regex("""^([01]\d|2[0-3]):[0-5]\d$""")) } ?: "",
+                        planId = planId,
+                        goalId = goalId
                     ))
                 }
             ) { Text("保存") }

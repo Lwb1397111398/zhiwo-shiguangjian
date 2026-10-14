@@ -171,26 +171,37 @@ class PlanDetailViewModel(application: Application) : AndroidViewModel(applicati
 
     // ========== 编辑 ==========
 
-    /** 计划页里的"+ 新增任务"：起止与所属目标直接从计划继承，用户只填名字和类型 */
-    fun addTask(planId: Long, content: String, kind: String, repeatRule: String, scheduledDate: String) =
-        viewModelScope.launch {
-            val plan = planDao.getById(planId) ?: return@launch
-            val trimmed = content.trim()
-            if (trimmed.isEmpty()) return@launch
-            bridge.saveTask(
-                TaskEntity(
-                    content = trimmed,
-                    createdAt = DateFormats.nowDateTimeIso(),
-                    kind = kind,
-                    repeatRule = if (kind == "daily") repeatRule else "everyday",
-                    startDate = plan.startDate,
-                    endDate = plan.endDate,
-                    scheduledDate = if (kind == "adhoc") scheduledDate.ifBlank { today } else "",
-                    planId = plan.id,
-                    goalId = plan.goalId
-                )
-            )
-        }
+    /** 保存任务（计划页编辑器与安排页共用同一编辑器，此处同样必须经 TaskWriteBridge 写新旧行） */
+    fun saveTask(task: TaskEntity) = viewModelScope.launch {
+        val id = bridge.saveTask(task)
+        // 提醒注册与反向清理的唯一编排：remindTime 非空且 active 才挂铃
+        com.zhiwo.shiguangjian.data.repository.TaskLifecycle.registerReminder(
+            db, getApplication(), if (id > 0) id else task.id
+        )
+    }
+
+    /** 状态迁移（暂停/结束/恢复）：一律经 TaskLifecycle，确保停铃/挂铃同步发生 */
+    fun setStatus(task: TaskEntity, status: String) = viewModelScope.launch {
+        com.zhiwo.shiguangjian.data.repository.TaskLifecycle.changeStatus(
+            db, getApplication(), task, status
+        )
+    }
+
+    /** 真删除：先停闹钟，再删行；打卡按外键 CASCADE 跟删（确认框负责如实报数） */
+    fun deleteTaskForever(task: TaskEntity) = viewModelScope.launch {
+        com.zhiwo.shiguangjian.data.repository.TaskLifecycle.deleteForever(db, getApplication(), task)
+    }
+
+    /** 删除确认框要报打卡条数；数没回来不许确认 */
+    suspend fun occurrenceCount(taskId: Long): Int =
+        snapOccurrences().count { it.taskId == taskId }
+
+    /** 任务若挂着来源记录，删除确认里要说清记录去向（安排页同款） */
+    suspend fun sourceRecordOf(task: TaskEntity) =
+        task.recordId?.let { db.recordDao().getRecordById(it) }
+
+    private suspend fun snapOccurrences() =
+        db.occurrenceDao().observeInRange(rangeFrom, today).first()
 
     fun savePlan(plan: PlanEntity) = viewModelScope.launch {
         val now = DateFormats.nowDateTimeIso()

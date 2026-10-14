@@ -207,12 +207,15 @@ private fun LedgerRow(
     ) {
         Box(Modifier.size(10.dp).clip(CircleShape).background(color.copy(alpha = if (dimmed) 0.3f else 1f)))
         Spacer(Modifier.width(8.dp))
+        // 标题最长的那段也不能被砍半：给两行 + 省略号，右侧分钟数永远完整可见
         Text(
             title, style = MaterialTheme.typography.bodySmall,
-            maxLines = 1, modifier = Modifier.weight(1f),
+            maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
             color = if (dimmed) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
             else MaterialTheme.colorScheme.onSurface
         )
+        Spacer(Modifier.width(8.dp))
         Text(
             detail, style = MaterialTheme.typography.bodySmall, fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant

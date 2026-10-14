@@ -43,7 +43,8 @@ fun GoalDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(goal?.title?.ifBlank { "未命名目标" } ?: "目标", maxLines = 1) },
+                title = { Text(goal?.title?.ifBlank { "未命名目标" } ?: "目标", maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
@@ -217,28 +218,60 @@ private fun ActionBar(
     onAbandon: () -> Unit,
     onDelete: () -> Unit
 ) {
+    // 两行各两个按钮，宽度给足：五个挤一行的后果是文字竖排、"编辑"被挤没了（实测教训）
     Surface(shadowElevation = 8.dp) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (active) {
-                Button(onClick = onAddPlan, modifier = Modifier.weight(1.2f)) { Text("+ 新增计划") }
+        Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (active) {
+                    Button(onClick = onAddPlan, modifier = Modifier.weight(1f)) { ActionLabel("+ 新增计划") }
+                }
+                OutlinedButton(onClick = onEdit, modifier = Modifier.weight(1f)) { ActionLabel("编辑目标") }
             }
-            OutlinedButton(onClick = onEdit, modifier = Modifier.weight(0.8f)) { Text("编辑") }
-            if (active) {
-                FilledTonalButton(onClick = onAchieve, modifier = Modifier.weight(1f)) { Text("标记达成") }
-                TextButton(onClick = onAbandon) { Text("放弃", color = MaterialTheme.colorScheme.error) }
-            }
-            Spacer(Modifier.weight(0.2f))
-            // 红色文字按钮与"放弃"分行分语义：放弃=终结保史，删除=抹账（同安排页编辑器的规矩）
-            TextButton(onClick = onDelete) {
-                Text("删除目标", color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (active) {
+                    FilledTonalButton(onClick = onAchieve, modifier = Modifier.weight(1f)) { ActionLabel("标记达成") }
+                    OutlinedButton(onClick = onAbandon, modifier = Modifier.weight(1f)) {
+                        ActionLabel("放弃", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                // 红色文字与"放弃"分开一行分语义：放弃=终结保史，删除=抹账（同安排页编辑器的规矩）
+                if (!active) {
+                    Spacer(Modifier.weight(1f))
+                }
+                TextButton(onClick = onDelete) {
+                    ActionLabel(
+                        "删除目标", color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
         }
     }
+}
+
+/** 按钮文字强制单行：不够宽时缩省略号，绝不竖排 */
+@Composable
+private fun ActionLabel(
+    text: String,
+    color: androidx.compose.ui.graphics.Color? = null,
+    style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.labelLarge
+) {
+    Text(
+        text,
+        style = style,
+        color = color ?: androidx.compose.ui.graphics.Color.Unspecified,
+        maxLines = 1,
+        softWrap = false,
+        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+    )
 }
 
 @Composable

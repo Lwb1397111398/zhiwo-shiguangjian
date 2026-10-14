@@ -2,6 +2,7 @@ package com.zhiwo.shiguangjian.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -16,13 +17,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.zhiwo.shiguangjian.data.db.entity.RecordEntity
+import com.zhiwo.shiguangjian.data.db.entity.TaskEntity
 import com.zhiwo.shiguangjian.ui.theme.Success
 import com.zhiwo.shiguangjian.ui.theme.Warning
 import com.zhiwo.shiguangjian.ui.viewmodel.PlanDetailViewModel
 import com.zhiwo.shiguangjian.ui.viewmodel.PlanTaskRow
 import com.zhiwo.shiguangjian.ui.viewmodel.WeekCellKind
+import kotlinx.coroutines.launch
 
-/** 计划详情页：区间、进度、其下任务的今天状态与近 7 天格子，以及暂停/删除 */
+/** 计划详情页：区间、进度、其下任务的今天状态与近 7 天格子，以及暂停/删除。任务点击可直接编辑 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlanDetailScreen(
@@ -34,13 +38,21 @@ fun PlanDetailScreen(
     LaunchedEffect(planId) { viewModel.open(planId) }
     val state by viewModel.state.collectAsState()
     var addOpen by remember { mutableStateOf(false) }
+    /** 点任务卡/编辑按钮唤出的编辑器目标；null=编辑器关着 */
+    var editingTask by remember { mutableStateOf<TaskEntity?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
+    /** 真删除确认前要如实报数：打卡条数与来源记录去向 */
+    var deleteTarget by remember { mutableStateOf<TaskEntity?>(null) }
+    var deleteOccCount by remember { mutableIntStateOf(-1) }
+    var deleteSourceRecord by remember { mutableStateOf<RecordEntity?>(null) }
+    val scope = rememberCoroutineScope()
 
     val plan = state.plan
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(plan?.title?.ifBlank { "未命名计划" } ?: "计划", maxLines = 1) },
+                title = { Text(plan?.title?.ifBlank { "未命名计划" } ?: "计划", maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
@@ -56,17 +68,24 @@ fun PlanDetailScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // 五个按钮挤一行会文字竖排——按语义拆两行（同目标详情页的教训）
                         Button(onClick = { addOpen = true }, modifier = Modifier.weight(1f)) {
-                            Text("+ 新增任务")
+                            Text("+ 新增任务", maxLines = 1)
                         }
-                        OutlinedButton(onClick = { onEditPlan(plan.id, plan.goalId ?: 0L) }) { Text("编辑") }
+                        OutlinedButton(onClick = { onEditPlan(plan.id, plan.goalId ?: 0L) },
+                            modifier = Modifier.weight(1f)) {
+                            Text("编辑计划", maxLines = 1)
+                        }
                         OutlinedButton(
                             onClick = {
                                 viewModel.setPlanStatus(plan, if (plan.status == "active") "paused" else "active")
-                            }
-                        ) { Text(if (plan.status == "paused") "恢复" else "暂停") }
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(if (plan.status == "paused") "恢复" else "暂停", maxLines = 1)
+                        }
                         TextButton(onClick = { confirmDelete = true }) {
-                            Text("删除", color = MaterialTheme.colorScheme.error)
+                            Text("删除", color = MaterialTheme.colorScheme.error, maxLines = 1)
                         }
                     }
                 }
@@ -138,7 +157,7 @@ fun PlanDetailScreen(
                 }
             }
 
-            DetailSectionTitle("任务（${state.tasks.size}）", null, {})
+            DetailSectionTitle("任务（${state.tasks.size}）", null, {}) 
             if (state.tasks.isEmpty()) {
                 Text(
                     "这个计划还没有任务。点下面「+ 新增任务」放一件每天做的事进去。",
@@ -147,22 +166,66 @@ fun PlanDetailScreen(
                     modifier = Modifier.padding(horizontal = 20.dp)
                 )
             }
-            state.tasks.forEach { row -> TaskLine(row) }
+            state.tasks.forEach { row -> TaskLine(row, onClick = { editingTask = row.task }) }
         }
     }
 
     if (addOpen) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(onDismissRequest = { addOpen = false }, sheetState = sheetState) {
-            QuickTaskSheet(
+            // 与安排页同一个编辑器：提醒/时长/重复细节全都能设，起止日期按计划区间预填，保存即挂到本计划下
+            TaskEditorSheet(
+                initial = null,
                 defaultDate = viewModel.today,
-                onCancel = { addOpen = false },
-                onSave = { content, kind, repeatRule, scheduledDate ->
-                    viewModel.addTask(planId, content, kind, repeatRule, scheduledDate)
+                planPreset = plan,
+                onSave = { task ->
+                    viewModel.saveTask(task)
                     addOpen = false
                 }
             )
         }
+    }
+
+    editingTask?.let { editing ->
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(onDismissRequest = { editingTask = null }, sheetState = sheetState) {
+            TaskEditorSheet(
+                initial = editing,
+                defaultDate = viewModel.today,
+                onSave = { task -> viewModel.saveTask(task); editingTask = null },
+                onDelete = { task -> viewModel.setStatus(task, "archived"); editingTask = null },
+                onPause = { task -> viewModel.setStatus(task, "paused"); editingTask = null },
+                onDeleteForever = { task ->
+                    editingTask = null
+                    deleteTarget = task
+                    scope.launch {
+                        deleteOccCount = viewModel.occurrenceCount(task.id)
+                        deleteSourceRecord = viewModel.sourceRecordOf(task)
+                    }
+                }
+            )
+        }
+    }
+
+    deleteTarget?.let { task ->
+        val sourceHint = deleteSourceRecord?.let { r ->
+            "\n\n注意：这条任务来自记录《${r.title.ifBlank { r.content.take(20) }}》。删任务不会删记录——" +
+                "它会回到「杂项待办」，在那里可以直接删记录本身。"
+        } ?: ""
+        ConfirmDialog(
+            title = "彻底删除任务「${task.content}」？",
+            body = if (deleteOccCount < 0) "正在数这条任务的打卡记录…"
+            else "这会删掉任务本身、它的 $deleteOccCount 条打卡记录和提醒，删完找不回来。" +
+                "只是这阵子不做了的话，关掉这里改选「结束任务」——记录留着，随时能从「我的计划」恢复。$sourceHint",
+            confirmText = "确认删除",
+            onConfirm = {
+                if (deleteOccCount >= 0) {
+                    viewModel.deleteTaskForever(task)
+                    deleteTarget = null
+                }
+            },
+            onDismiss = { deleteTarget = null }
+        )
     }
 
     plan?.let {
@@ -185,10 +248,11 @@ fun PlanDetailScreen(
 }
 
 @Composable
-private fun TaskLine(row: PlanTaskRow) {
+private fun TaskLine(row: PlanTaskRow, onClick: () -> Unit = {}) {
     val task = row.task
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
     ) {
@@ -197,10 +261,13 @@ private fun TaskLine(row: PlanTaskRow) {
                 Text(
                     task.content,
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f)
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
+                Spacer(Modifier.width(8.dp))
                 Text(
-                    todayLabel(row),
+                    todayLabel(row) + " ›",
                     style = MaterialTheme.typography.labelMedium,
                     color = when {
                         row.doneToday -> Success
@@ -221,7 +288,8 @@ private fun TaskLine(row: PlanTaskRow) {
             }
             if (task.status != "active") {
                 Text(
-                    if (task.status == "paused") "已暂停：不参与排期与进度" else "已归档：不再出现在安排页",
+                    if (task.status == "paused") "已暂停：不参与排期与进度，点开可恢复"
+                    else "已归档：不再出现在安排页，点开可恢复",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 6.dp)
@@ -250,72 +318,6 @@ private fun WeekDot(kind: WeekCellKind) {
                 Modifier.size(6.dp).background(tint.copy(alpha = 0.35f), CircleShape)
             )
             WeekCellKind.NONE -> Box(Modifier.size(4.dp).background(Color.Gray.copy(alpha = 0.25f), CircleShape))
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun QuickTaskSheet(
-    defaultDate: String,
-    onCancel: () -> Unit,
-    onSave: (content: String, kind: String, repeatRule: String, scheduledDate: String) -> Unit
-) {
-    var content by remember { mutableStateOf("") }
-    var kind by remember { mutableStateOf("daily") }
-    var repeatRule by remember { mutableStateOf("everyday") }
-    var scheduledDate by remember { mutableStateOf("") }
-    var picking by remember { mutableStateOf(false) }
-
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text("给这个计划加一件任务", style = MaterialTheme.typography.titleMedium)
-        OutlinedTextField(
-            value = content, onValueChange = { content = it },
-            label = { Text("要做什么") }, singleLine = true, modifier = Modifier.fillMaxWidth()
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("daily" to "每日固定", "adhoc" to "临时一次", "blank" to "每日留白").forEach { (v, label) ->
-                FilterChip(selected = kind == v, onClick = { kind = v }, label = { Text(label) })
-            }
-        }
-        if (kind == "daily") {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("everyday" to "每天", "weekdays" to "工作日").forEach { (v, label) ->
-                    FilterChip(selected = repeatRule == v, onClick = { repeatRule = v }, label = { Text(label) })
-                }
-            }
-        }
-        if (kind == "adhoc") {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedButton(onClick = { picking = true }, modifier = Modifier.weight(1f)) {
-                    Text(if (scheduledDate.isBlank()) "哪一天出现：今天" else "哪一天出现：$scheduledDate")
-                }
-                if (scheduledDate.isNotBlank()) TextButton(onClick = { scheduledDate = "" }) { Text("清空") }
-            }
-            if (picking) {
-                DatePickerDialogField(
-                    initial = scheduledDate.ifBlank { defaultDate },
-                    onConfirm = { scheduledDate = it; picking = false },
-                    onDismiss = { picking = false }
-                )
-            }
-        }
-        Text(
-            "任务的起止与所属目标跟着计划走；要改重复细节，请到安排页编辑这条任务。",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 28.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Button(enabled = content.isNotBlank(), onClick = {
-                onSave(content.trim(), kind, repeatRule, scheduledDate)
-            }) { Text("保存") }
-            OutlinedButton(onClick = onCancel) { Text("取消") }
         }
     }
 }

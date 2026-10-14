@@ -22,7 +22,8 @@ object UpdateDownloader {
 
     /**
      * 流式下载，[onProgress] 回调 (已下载字节, 总字节；总长未知时为 -1)。
-     * 完成返回正式 APK 文件。失败抛 [IOException]，.part 残留会在下次重试时覆盖。
+     * 完成返回正式 APK 文件。按 [UpdateInfo.downloadCandidates] 顺序逐源尝试
+     * （查询成功的镜像优先、直连与其余镜像兜底），单源失败换下一条，全失败才抛 [IOException]。
      */
     fun download(context: Context, info: UpdateInfo, onProgress: (Long, Long) -> Unit): File {
         val dest = apkFile(context, info.versionCode)
@@ -32,14 +33,26 @@ object UpdateDownloader {
         dest.parentFile?.listFiles()?.filter { it != dest }?.forEach { it.delete() }
         val part = File(dest.path + ".part")
 
-        val conn = (java.net.URI(info.downloadUrl).toURL().openConnection() as HttpURLConnection)
+        var lastError: IOException? = null
+        for (url in info.downloadCandidates()) {
+            try {
+                return downloadOnce(url, part, dest, onProgress)
+            } catch (e: IOException) {
+                lastError = e // 换下一个源：.part 会被下一候选从头覆盖，绝不留半截包
+            }
+        }
+        throw lastError ?: IOException("下载失败：没有可用的下载地址")
+    }
+
+    private fun downloadOnce(url: String, part: File, dest: File, onProgress: (Long, Long) -> Unit): File {
+        val conn = (java.net.URI(url).toURL().openConnection() as HttpURLConnection)
         try {
             conn.connectTimeout = 15_000
             conn.readTimeout = 30_000
             conn.instanceFollowRedirects = true // GitHub 资产实际落在 objects.githubusercontent.com
             conn.setRequestProperty("User-Agent", "zhiwo-shiguangjian-app")
             val code = conn.responseCode
-            if (code != 200) throw IOException("下载失败：GitHub 返回 $code")
+            if (code != 200) throw IOException("下载失败：${java.net.URI(url).host} 返回 $code")
             val total = conn.contentLengthLong
             var done = 0L
             conn.inputStream.use { input ->

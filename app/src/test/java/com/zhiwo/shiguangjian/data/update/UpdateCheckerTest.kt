@@ -89,4 +89,37 @@ class UpdateCheckerTest {
         assertFalse(UpdateChecker.hasUpdate(21, 21)) // 同版本不提示，但走下载复用可重装
         assertFalse(UpdateChecker.hasUpdate(20, 21))
     }
+
+    // ===== 2026-10-14 多源兜底：老板手机 DNS 解析不了 api.github.com，镜像优先+直连兜底 =====
+
+    private val githubUrl = "https://github.com/o/r/releases/download/latest/zhiwo-shiguangjian.apk"
+
+    private fun info(prefix: String) =
+        UpdateInfo(21, "1.1.21", githubUrl, 12345678L, "说明", prefix)
+
+    @Test
+    fun `API链 直连在首且镜像可透传API的才入链`() {
+        val (firstPrefix, firstUrl) = UpdateChecker.API_SOURCES.first()
+        assertEquals("", firstPrefix)
+        assertEquals(UpdateChecker.LATEST_API, firstUrl)
+        // ghfast.top 实测拒绝透传 API（403），不能进查询链，只留在下载镜像表
+        assertFalse(UpdateChecker.API_SOURCES.any { it.second.contains("ghfast") })
+        assertEquals(3, UpdateChecker.API_SOURCES.size)
+    }
+
+    @Test
+    fun `下载候选 查询走直连时 直连优先其余镜像兜底`() {
+        val cands = info("").downloadCandidates()
+        assertEquals(githubUrl, cands.first())
+        assertTrue(cands.all { it.endsWith(".apk") })
+        assertTrue(cands.size > 1) // 不止一条：镜像兜底在列
+    }
+
+    @Test
+    fun `下载候选 查询走镜像时 同镜像优先直连殿后`() {
+        val cands = info("https://gh-proxy.com/").downloadCandidates()
+        assertEquals("https://gh-proxy.com/$githubUrl", cands.first())
+        assertTrue(cands.contains(githubUrl)) // 直连仍在候选里
+        assertEquals(cands.size, cands.distinct().size) // 去重干净：成功镜像不会被重复排两次
+    }
 }

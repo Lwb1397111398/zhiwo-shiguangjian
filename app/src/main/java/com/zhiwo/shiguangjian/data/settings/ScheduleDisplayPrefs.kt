@@ -7,7 +7,7 @@ import com.google.gson.JsonObject
  * 安排页的显示偏好：段顺序与显隐。存 settings 表的一个 JSON 键。
  * 坏 JSON / 缺段 / 多段一律回退到"默认顺序 + 未知丢弃 + 缺失追加"，不抛异常。
  */
-enum class ScheduleSectionId { DAILY_FIXED, DAILY_BLANK, ADHOC_TODAY, MISC_TODO, OVERDUE, MISSED, PLANS, GOALS, DONE_TODAY, UNFILLED }
+enum class ScheduleSectionId { DAILY_FIXED, DAILY_BLANK, ADHOC_TODAY, MISC_TODO, MISSED, PLANS, GOALS, DONE_TODAY, UNFILLED }
 
 data class ScheduleDisplayPrefs(
     val order: List<ScheduleSectionId>,

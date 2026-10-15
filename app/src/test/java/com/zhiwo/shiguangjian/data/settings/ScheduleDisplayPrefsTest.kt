@@ -49,7 +49,8 @@ class ScheduleDisplayPrefsTest {
         assertEquals(order, ScheduleDisplayPrefs.move(order, ScheduleSectionId.DAILY_FIXED, -1))
         assertEquals(order, ScheduleDisplayPrefs.move(order, ScheduleSectionId.UNFILLED, 1))
         val moved = ScheduleDisplayPrefs.move(order, ScheduleSectionId.DONE_TODAY, -2)
-        assertEquals(order.toMutableList().also { it.remove(ScheduleSectionId.DONE_TODAY); it.add(6, ScheduleSectionId.DONE_TODAY) }, moved)
+        // 2026-10-15：OVERDUE 段并入待补录后 DONE_TODAY 下标从 8 变 7，-2 落在 5
+        assertEquals(order.toMutableList().also { it.remove(ScheduleSectionId.DONE_TODAY); it.add(5, ScheduleSectionId.DONE_TODAY) }, moved)
     }
 
     @Test fun P08_visibleOrder与hidden一致() {

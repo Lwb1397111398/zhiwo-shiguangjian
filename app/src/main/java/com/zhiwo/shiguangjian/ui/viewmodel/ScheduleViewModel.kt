@@ -26,7 +26,6 @@ import com.zhiwo.shiguangjian.data.tasks.EntryState
 import com.zhiwo.shiguangjian.data.tasks.dayTypeOf
 import com.zhiwo.shiguangjian.data.tasks.dayTypeOrWeekend
 import com.zhiwo.shiguangjian.data.tasks.entriesFor
-import com.zhiwo.shiguangjian.data.tasks.missedOn
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -39,8 +38,8 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-/** 安排页的段；枚举声明顺序即默认显示顺序 */
-enum class ScheduleSectionGroup { DAILY_FIXED, DAILY_BLANK, ADHOC_TODAY, MISC_TODO, OVERDUE, MISSED, DONE_TODAY }
+/** 安排页的段；枚举声明顺序即默认显示顺序。待补录=临时任务过期，2026-10-15 起习惯任务漏做不再进任何提醒段 */
+enum class ScheduleSectionGroup { DAILY_FIXED, DAILY_BLANK, ADHOC_TODAY, MISC_TODO, MISSED, DONE_TODAY }
 
 data class ScheduleUiState(
     val today: String = "",
@@ -88,8 +87,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
 
     private val sources: StateFlow<ScheduleSources> = combine(
         db.taskDao().getAllTasks(),
-        // 判后了结要看历史（生命周期设计 §2.1）：观察范围从"近30天"放宽为全量，
-        // 漏做回看仍由引擎按 MISSED_LOOKBACK_DAYS 自己截
+        // 判后了结要看历史（生命周期设计 §2.1）：观察范围取全量（2026-10-15 起习惯任务漏做不再回看，只剩 adhoc 判后需要）
         db.occurrenceDao().observeInRange("1970-01-01", today),
         db.dayOverrideDao().getAll(),
         db.planDao().getAllPlans(),
@@ -129,15 +127,8 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
 
         plan.planned.filterNot { it.state == EntryState.DONE }.forEach { groups.getValue(groupOf(it.section)) += it }
         plan.done.forEach { groups.getValue(ScheduleSectionGroup.DONE_TODAY) += it }
-        plan.overdue.forEach { groups.getValue(ScheduleSectionGroup.OVERDUE) += it }
-        missedOn(
-            tasks = src.tasks,
-            occurrences = src.occurrences,
-            fromDate = today,
-            dayTypeOfDate = { resolverFor(it, overrideByDate) },
-            planStatusById = src.plans.associate { it.id to it.status },
-            goalStatusById = src.goals.associate { it.id to it.status }
-        ).forEach { groups.getValue(ScheduleSectionGroup.MISSED) += it }
+        // 「待补录」只装临时任务过期条目（2026-10-15 规则：每日/留白习惯漏做不再提醒补录，缺的那天就让它过去）
+        plan.overdue.forEach { groups.getValue(ScheduleSectionGroup.MISSED) += it }
         // 杂项段没有 DayEntry（它是记录不是任务），用一个占位条目只为让段顺序与显隐统一走同一套
         if (misc.isNotEmpty()) groups.getValue(ScheduleSectionGroup.MISC_TODO) += miscPlaceholder
 

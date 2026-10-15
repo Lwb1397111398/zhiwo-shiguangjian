@@ -47,7 +47,6 @@ private val SECTION_TITLES = mapOf(
     ScheduleSectionGroup.DAILY_BLANK to "每日 · 留白",
     ScheduleSectionGroup.ADHOC_TODAY to "临时 · 今天",
     ScheduleSectionGroup.MISC_TODO to "杂项待办（来自记录）",
-    ScheduleSectionGroup.OVERDUE to "已过期",
     ScheduleSectionGroup.MISSED to "待补录",
     ScheduleSectionGroup.DONE_TODAY to "今日已完成"
 )
@@ -679,7 +678,7 @@ internal fun TaskEditorSheet(
                 DateField("哪一天出现", scheduledDate, onOpen = { picking = "sched" }, onClear = { scheduledDate = "" })
                 DateField("最后期限（可留空）", endDate, onOpen = { picking = "end" }, onClear = { endDate = "" })
                 if (endDate.isNotBlank() && scheduledDate.isNotBlank() && endDate < scheduledDate) {
-                    Text("期限早于出现日期：这天一到就会显示过期", color = MaterialTheme.colorScheme.error,
+                    Text("期限早于出现日期：这天一到就会进「待补录」", color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall)
                 }
             }

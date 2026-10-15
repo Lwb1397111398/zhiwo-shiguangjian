@@ -187,7 +187,7 @@ class GoalDetailViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     /** 逾期 = 临时任务已过期限（含无出现日时看期限）且还没记下任何结论。
-     *  判据与安排页"已过期"段同源：引擎的 adhocJudgedTaskIds + adhocOverdueOn（生命周期设计 B4/B13） */
+     *  判据与安排页「待补录」段同源：引擎的 adhocJudgedTaskIds + adhocOverdueOn（生命周期设计 B4/B13） */
     private fun overdueAdhoc(tasks: List<TaskEntity>, occs: List<TaskOccurrenceEntity>): Int {
         val judged = adhocJudgedTaskIds(tasks, occs, today)
         return tasks.count { t ->

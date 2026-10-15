@@ -15,7 +15,7 @@ import java.time.format.DateTimeFormatter
 enum class DayType { WORKDAY, HOLIDAY }
 
 /** 计入当天应做数的四个段 */
-enum class EntrySection { DAILY_FIXED, DAILY_BLANK, ADHOC_TODAY, MISC_TODO, OVERDUE, MISSED, UNFILLED }
+enum class EntrySection { DAILY_FIXED, DAILY_BLANK, ADHOC_TODAY, MISC_TODO, OVERDUE, UNFILLED }
 
 enum class EntryState { DUE, DONE, NOT_DONE }
 
@@ -24,14 +24,16 @@ data class DayEntry(
     val occurrence: TaskOccurrenceEntity?,
     val state: EntryState,
     val section: EntrySection,
-    /** MISSED/UNFILLED 指向的是哪一天（当天条目为空串），补打卡时要落到那一天 */
+    /** 条目指向的历史日（空串=当天本身）；临时任务过期后按"判后了结"补在今天即可 */
     val date: String = ""
 )
 
 data class DayPlanResult(
     /** 当天应做（含已完成的）：四个段之一，分母在这里，不随打卡进度变化 */
     val planned: List<DayEntry>,
+    /** 临时任务过了期限/出现日还没结论——安排页「待补录」段的唯一来源（2026-10-15 规则：习惯任务漏做不再提醒） */
     val overdue: List<DayEntry>,
+    /** 恒为空：每日/留白任务的漏做不再造条目（老板定的习惯任务不打扰原则），字段暂留兼容日历页取数 */
     val missed: List<DayEntry>,
     val unfilled: List<DayEntry>,
     val miscCount: Int,
@@ -44,7 +46,6 @@ data class DayPlanResult(
 }
 
 object ScheduleConstants {
-    const val MISSED_LOOKBACK_DAYS = 30
     const val UNFILLED_WINDOW_DAYS = 7
     const val PROGRESS_MAX_RANGE_DAYS = 366L
     const val OWNERSHIP_BACKFILL_DAYS = 7
@@ -269,39 +270,6 @@ private fun stateOf(occ: TaskOccurrenceEntity?): EntryState = when (occ?.status)
     "done" -> EntryState.DONE
     "not_done" -> EntryState.NOT_DONE
     else -> EntryState.DUE
-}
-
-/** 漏做：区间内"该做却没有当天记录"的每日/留白任务；只回看 lookback 天且不早于任务生效日 */
-fun missedOn(
-    tasks: List<TaskEntity>,
-    occurrences: List<TaskOccurrenceEntity>,
-    fromDate: String,
-    lookbackDays: Int = ScheduleConstants.MISSED_LOOKBACK_DAYS,
-    dayTypeOfDate: (String) -> DayType?,
-    planStatusById: Map<Long, String> = emptyMap(),
-    goalStatusById: Map<Long, String> = emptyMap()
-): List<DayEntry> {
-    val today = engineDate(fromDate) ?: return emptyList()
-    val occKeys = occurrences.filter { it.status == "done" || it.status == "not_done" }
-        .map { it.taskId to it.date }.toSet()
-    val out = mutableListOf<DayEntry>()
-    tasks.filter { it.kind.trim().lowercase() in setOf("daily", "blank") }.forEach { task ->
-        val start = effectiveStart(task) ?: return@forEach
-        for (i in 1 until lookbackDays) {
-            val day = today.minusDays(i.toLong())
-            if (day.isBefore(start)) break
-            val key = day.format(ISO)
-            if (!isScheduledOn(
-                    task, key, dayTypeOfDate(key),
-                    task.planId?.let { planStatusById[it] },
-                    task.goalId?.let { goalStatusById[it] }
-                )
-            ) continue
-            if (task.id to key in occKeys) continue
-            out += DayEntry(task, null, EntryState.DUE, EntrySection.MISSED, key)
-        }
-    }
-    return out.sortedWith(compareBy({ it.task.sortOrder }, { it.task.id }))
 }
 
 /** 连续打卡天数：被规则跳过的日子不打断，"该做没做"才归 0 */

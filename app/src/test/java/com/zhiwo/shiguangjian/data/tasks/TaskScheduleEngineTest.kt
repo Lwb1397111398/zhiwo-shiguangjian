@@ -320,19 +320,22 @@ class TaskScheduleEngineTest {
         assertEquals(0, r.doneCount)
     }
 
-    // ---------- 漏做与连续 ----------
+    // ---------- 漏做与连续（2026-10-15 规则：习惯任务漏做不再进「待补录」，见 MFD13/14） ----------
 
-    @Test fun MFD13_missedOn不回溯到迁移日之前() {
-        val t = task(id = 11, createdAt = "2020-01-01T00:00:00.000Z")
-        val missed = missedOn(listOf(t), emptyList(), "2026-09-22", lookbackDays = 30, dayTypeOfDate = alwaysWorkday)
-        assertEquals("只允许迁移日之后的真实缺口，实际 ${missed.map { it.date }}", listOf("2026-09-21"), missed.map { it.date })
+    @Test fun MFD13_每日任务昨天漏做今天不再出现在待补录() {
+        val t = task(id = 11, createdAt = "2026-09-01T00:00:00.000Z")
+        // 9-21 该做没做：9-22 查询时只剩"今天应做"一条，漏掉的那天不再造缺口条目
+        val r = entriesFor("2026-09-22", listOf(t), emptyList(), DayType.WORKDAY)
+        assertEquals(1, r.planned.size)
+        assertEquals(EntrySection.DAILY_FIXED, r.planned.first().section)
+        assertTrue("习惯漏做不进任何提醒段", r.overdue.isEmpty() && r.missed.isEmpty())
     }
 
-    @Test fun MFD14_昨天该做没做算一条漏做() {
-        val t = task(id = 12, createdAt = "2026-09-01T00:00:00.000Z")
-        val missed = missedOn(listOf(t), emptyList(), "2026-09-22", lookbackDays = 30, dayTypeOfDate = alwaysWorkday)
-        assertEquals(listOf("2026-09-21"), missed.map { it.date })
-        assertEquals(EntrySection.MISSED, missed.first().section)
+    @Test fun MFD14_留白任务漏做同样不进待补录() {
+        val t = task(id = 12, kind = "blank", createdAt = "2026-09-01T00:00:00.000Z")
+        val r = entriesFor("2026-09-22", listOf(t), emptyList(), DayType.WORKDAY)
+        assertEquals(listOf(EntrySection.DAILY_BLANK), r.planned.map { it.section })
+        assertTrue(r.overdue.isEmpty() && r.missed.isEmpty())
     }
 
     @Test fun MFD15_不被重复规则跳过的日子打断连续() {

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.zhiwo.shiguangjian.data.tasks.TimeLensCalculatorTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-15T10:42:50" hostname="文彬三号" time="0.023">
+  <properties/>
+  <testcase name="adhoc只在到期那天进环 之前不算" classname="com.zhiwo.shiguangjian.data.tasks.TimeLensCalculatorTest" time="0.012"/>
+  <testcase name="留白回填的时长计入logged且与计划并存" classname="com.zhiwo.shiguangjian.data.tasks.TimeLensCalculatorTest" time="0.003"/>
+  <testcase name="暂停计划的每日任务不进今天的环" classname="com.zhiwo.shiguangjian.data.tasks.TimeLensCalculatorTest" time="0.002"/>
+  <testcase name="非留白任务时长0就是不限不进环" classname="com.zhiwo.shiguangjian.data.tasks.TimeLensCalculatorTest" time="0.0"/>
+  <testcase name="工作日任务只在周一到周五有计划" classname="com.zhiwo.shiguangjian.data.tasks.TimeLensCalculatorTest" time="0.001"/>
+  <testcase name="已记录投入只算当天done打卡的实际分钟" classname="com.zhiwo.shiguangjian.data.tasks.TimeLensCalculatorTest" time="0.001"/>
+  <testcase name="完成与未记录分别计入done和logged" classname="com.zhiwo.shiguangjian.data.tasks.TimeLensCalculatorTest" time="0.001"/>
+  <testcase name="环按归属聚合并按时长降序 计划优先于目标" classname="com.zhiwo.shiguangjian.data.tasks.TimeLensCalculatorTest" time="0.001"/>
+  <testcase name="留白任务没填时长按60分钟计" classname="com.zhiwo.shiguangjian.data.tasks.TimeLensCalculatorTest" time="0.001"/>
+  <testcase name="未定时长不进环只计数" classname="com.zhiwo.shiguangjian.data.tasks.TimeLensCalculatorTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

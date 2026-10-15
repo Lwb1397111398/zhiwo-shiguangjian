@@ -3,4 +3,6 @@
     <cache-path name="share" path="share/" />
     <!-- 应用自更新：下载到 cache/updates/ 的 APK 经 FileProvider 给系统安装器临时读权限 -->
     <cache-path name="updates" path="updates/" />
+    <!-- 留念照片：系统相机把照片直接写进 filesDir/photos/，FileProvider 只把该目录共享给相机应用 -->
+    <files-path name="moment_photos" path="photos/" />
 </paths>

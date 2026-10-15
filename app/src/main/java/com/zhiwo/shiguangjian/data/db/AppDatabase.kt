@@ -26,7 +26,8 @@ import com.zhiwo.shiguangjian.data.db.entity.*
         GoalEntity::class,
         PlanEntity::class,
         TaskOccurrenceEntity::class,
-        DayOverrideEntity::class
+        DayOverrideEntity::class,
+        MomentPhotoEntity::class
     ],
     version = AppDatabase.VERSION,
     exportSchema = true
@@ -47,10 +48,11 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun planDao(): PlanDao
     abstract fun occurrenceDao(): TaskOccurrenceDao
     abstract fun dayOverrideDao(): DayOverrideDao
+    abstract fun momentPhotoDao(): MomentPhotoDao
 
     companion object {
         /** 版本号只留这一处：失败页要说"从哪升到哪"，注解与运行时得是同一个数 */
-        const val VERSION = 14
+        const val VERSION = 15
 
         private const val DATABASE_NAME = "zhiwo_shiguangjian"
 
@@ -302,7 +304,7 @@ abstract class AppDatabase : RoomDatabase() {
             AppDatabase::class.java,
             DATABASE_NAME
         )
-            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
+            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
             // 正式版与开发版都不允许静默清库：缺迁移必须抛出来，由用户在失败页上决定重试还是清库
             .build()
             .also { INSTANCE = it }

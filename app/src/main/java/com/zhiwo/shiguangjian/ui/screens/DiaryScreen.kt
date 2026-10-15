@@ -65,6 +65,8 @@ fun DiaryScreen(
     var readingDiary by remember { mutableStateOf<DiaryEntity?>(null) }
     var showExportAllMenu by remember { mutableStateOf(false) }
     var showCreateDialog by remember { mutableStateOf(false) }
+    /** 留念照：点了"补一张"后先问拍照还是相册 */
+    var photoChoice by remember { mutableStateOf<com.zhiwo.shiguangjian.ui.components.MomentPhotoRequest?>(null) }
     val allDiaries by viewModel.allDiaries.collectAsState()
 
     LaunchedEffect(Unit) {
@@ -339,16 +341,21 @@ fun DiaryScreen(
 
     // ===== 沉浸阅读视图 =====
     readingDiary?.let { diary ->
+        // 当天留念照：随存随变；本组件挂在 sheet 里，用小 Flow 收集
+        val photos by viewModel.photosOn(diary.date).collectAsState(initial = emptyList())
         ModalBottomSheet(
             onDismissRequest = { readingDiary = null },
             containerColor = MaterialTheme.colorScheme.background
         ) {
             ReadingView(
                 diary = diary,
+                photos = photos,
                 regenerating = regeneratingId == diary.id,
                 onEdit = { editingDiary = diary; readingDiary = null },
                 onDelete = { diaryToDelete = diary; readingDiary = null },
                 onExport = { asMd -> viewModel.exportDiary(diary, asMarkdown = asMd) },
+                onAddPhoto = { photoChoice = com.zhiwo.shiguangjian.ui.components.MomentPhotoRequest(diary.date, "手动补拍") },
+                onDeletePhoto = { viewModel.deleteMomentPhoto(it) },
                 onShare = {
                     try {
                         val file = com.zhiwo.shiguangjian.data.diary.DiaryShareCard.render(context, diary)
@@ -373,6 +380,28 @@ fun DiaryScreen(
                 }
             )
         }
+    }
+
+    // ===== 留念照：拍照 / 相册选择 =====
+    val photoHost = com.zhiwo.shiguangjian.ui.components.rememberMomentPhotoHost(
+        onCameraPhoto = { date, label, file ->
+            viewModel.addMomentPhoto(date, label, file) { ok, msg ->
+                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            }
+        },
+        onGalleryPhoto = { date, label, uri ->
+            viewModel.importMomentPhoto(date, label, uri) { ok, msg ->
+                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            }
+        }
+    )
+    photoChoice?.let { req ->
+        com.zhiwo.shiguangjian.ui.components.MomentPhotoChoiceDialog(
+            request = req,
+            onCamera = { photoHost.openCamera(req.date, req.label); photoChoice = null },
+            onGallery = { photoHost.openGallery(req.date, req.label); photoChoice = null },
+            onDismiss = { photoChoice = null }
+        )
     }
 }
 
@@ -418,14 +447,17 @@ private fun DiaryCard(diary: DiaryEntity, onClick: () -> Unit) {
     }
 }
 
-/** 沉浸阅读：情绪 + 日期头部、正文排版、底部操作 */
+/** 沉浸阅读：情绪 + 日期头部、正文排版、留念照横排、底部操作 */
 @Composable
 private fun ReadingView(
     diary: DiaryEntity,
+    photos: List<com.zhiwo.shiguangjian.data.db.entity.MomentPhotoEntity>,
     regenerating: Boolean,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onExport: (Boolean) -> Unit,
+    onAddPhoto: () -> Unit,
+    onDeletePhoto: (com.zhiwo.shiguangjian.data.db.entity.MomentPhotoEntity) -> Unit,
     onRegenerate: () -> Unit,
     onShare: () -> Unit
 ) {
@@ -456,6 +488,44 @@ private fun ReadingView(
             diary.content,
             fontSize = 15.sp, lineHeight = 26.sp,
             color = MaterialTheme.colorScheme.onSurface
+        )
+        // ===== 留念照片：当天拍的都在这儿，横排缩略图；末尾一格是"补一张" =====
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            photos.forEach { photo ->
+                com.zhiwo.shiguangjian.ui.components.MomentPhotoThumb(
+                    photo = photo,
+                    onClick = { },
+                    onDelete = { onDeletePhoto(photo) }
+                )
+            }
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.size(88.dp).clickable(onClick = onAddPhoto)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        Icons.Default.Add, contentDescription = "补一张留念照",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text("补一张", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        Text(
+            "留给这一天的纪念照；配了识图模型的话，AI 也能看着它们写日记。",
+            fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            modifier = Modifier.padding(top = 6.dp)
         )
         Spacer(modifier = Modifier.height(24.dp))
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))

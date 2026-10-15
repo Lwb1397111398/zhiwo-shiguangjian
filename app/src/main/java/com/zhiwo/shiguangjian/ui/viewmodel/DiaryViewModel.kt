@@ -44,6 +44,7 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
     private val memoryRepo = MemoryRepository(app.database.memoryDao())
     private val settingsRepo = SettingsRepository(app.database.settingDao())
     private val secureSettingsRepo = SecureSettingsRepository(app)
+    private val photoRepo = app.momentPhotoRepo
     private val aiRepo get() = app.aiRepo
 
     private val _searchQuery = MutableStateFlow("")
@@ -115,6 +116,30 @@ class DiaryViewModel(application: Application) : AndroidViewModel(application) {
 
     fun deleteDiary(id: Long) {
         viewModelScope.launch { diaryRepo.deleteDiaryById(id) }
+    }
+
+    // ===== 留念照片（按天） =====
+
+    /** 某天的留念照列表（日报表驱动，随存随变） */
+    fun photosOn(date: String) = photoRepo.observeByDate(date)
+
+    /** 日记阅读页手动补拍/选图 */
+    fun addMomentPhoto(date: String, label: String, file: File, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            val ok = runCatching { photoRepo.adoptCameraFile(file, date, label) }.getOrNull() != null
+            onResult(ok, if (ok) "已收进 $date 的留念 📷" else "照片没存上，再试一次？")
+        }
+    }
+
+    fun importMomentPhoto(date: String, label: String, uri: android.net.Uri, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            val ok = runCatching { photoRepo.importFromUri(uri, date, label) }.getOrNull() != null
+            onResult(ok, if (ok) "已收进 $date 的留念 🖼" else "这张图没读出来，换一张试试？")
+        }
+    }
+
+    fun deleteMomentPhoto(photo: com.zhiwo.shiguangjian.data.db.entity.MomentPhotoEntity) {
+        viewModelScope.launch { photoRepo.delete(photo) }
     }
 
     /** 手动新建/补写日记：用户手写内容，isUserEdited=true（永不被自动重生成覆盖） */

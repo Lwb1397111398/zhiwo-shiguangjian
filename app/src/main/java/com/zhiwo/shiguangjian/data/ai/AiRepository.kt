@@ -27,6 +27,12 @@ class AiRepository {
     private var modelName: String = ""
     private var retrofit: Retrofit? = null
     private var apiService: AiApiService? = null
+    /**
+     * 用户声明"当前模型支持识图"才允许发多模态消息（OpenAI vision 格式）。
+     * 没有任何自动探测能证明远端模型能吃图——乱发 image_url 会被不支持的接口直接打回，
+     * 所以默认关，由设置页开关驱动，configureFromSettings 从设置回填。
+     */
+    var visionEnabled: Boolean = false
     private val rateLimitMutex = Mutex()
     private var lastCallTime = 0L
     private val minCallInterval = 3000L
@@ -110,6 +116,7 @@ class AiRepository {
                 }
             }
             val modelName = settingsRepo.getSetting("modelName") ?: ""
+            visionEnabled = settingsRepo.getSetting("supportsVision") == "1"
             configure(baseUrl, apiKey, modelName)
         } catch (e: Throwable) {
             android.util.Log.e("AiRepository", "从设置加载 AI 配置失败", e)
@@ -133,12 +140,16 @@ class AiRepository {
         }
     }
 
-    private suspend fun chat(messages: List<Pair<String, String>>, maxTokens: Int = 2000): String {
+    private suspend fun chat(
+        messages: List<Pair<String, String>>,
+        maxTokens: Int = 2000,
+        imageUrls: List<String> = emptyList()
+    ): String {
         // 可重试错误（限流/服务端/网络抖动）指数退避最多 2 次：1s → 2s
         var attempt = 0
         while (true) {
             try {
-                return chatOnce(messages, maxTokens)
+                return chatOnce(messages, maxTokens, imageUrls)
             } catch (e: Throwable) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 if (attempt < MAX_RETRIES && isRetryable(e)) {
@@ -169,16 +180,39 @@ class AiRepository {
         }
     }
 
-    private suspend fun chatOnce(messages: List<Pair<String, String>>, maxTokens: Int = 2000): String {
+    private suspend fun chatOnce(
+        messages: List<Pair<String, String>>,
+        maxTokens: Int = 2000,
+        imageUrls: List<String> = emptyList()
+    ): String {
         rateLimitedCall()
         val api = apiService
             ?: throw IllegalStateException("AI 服务未配置，请检查 API 地址格式是否正确（需包含 http:// 或 https://）")
 
+        // 带图请求只在用户声明模型支持识图时发出；调用方忘了筛，这里兜底降级成纯文本
+        val withImages = visionEnabled && imageUrls.isNotEmpty()
+        val lastUserIndex = messages.indexOfLast { it.first == "user" }
         val messagesArray = JsonArray()
-        messages.forEach { (role, content) ->
+        messages.forEachIndexed { index, (role, content) ->
             val msgObj = JsonObject()
             msgObj.addProperty("role", role)
-            msgObj.addProperty("content", content)
+            if (withImages && index == lastUserIndex) {
+                // OpenAI 多模态格式：content 从字符串变成 text + image_url 部件数组
+                val parts = JsonArray()
+                val textPart = JsonObject()
+                textPart.addProperty("type", "text")
+                textPart.addProperty("text", content)
+                parts.add(textPart)
+                imageUrls.forEach { url ->
+                    val imgPart = JsonObject()
+                    imgPart.addProperty("type", "image_url")
+                    imgPart.add("image_url", JsonObject().apply { addProperty("url", url) })
+                    parts.add(imgPart)
+                }
+                msgObj.add("content", parts)
+            } else {
+                msgObj.addProperty("content", content)
+            }
             messagesArray.add(msgObj)
         }
 
@@ -336,16 +370,27 @@ class AiRepository {
         todayRecords: String,
         userInput: String,
         relatedMemories: String,
-        userProfileSummary: String = "暂无可靠画像"
+        userProfileSummary: String = "暂无可靠画像",
+        photoUrls: List<String> = emptyList(),
+        photosNote: String = ""
     ): String {
+        val urls = if (visionEnabled) photoUrls else emptyList()
         val prompt = DAILY_REVIEW_PROMPT
             .replace("{{task_summary}}", taskSummary)
             .replace("{{today_records}}", todayRecords)
             .replace("{{user_input}}", userInput)
             .replace("{{related_memories}}", relatedMemories)
             .replace("{{user_profile}}", userProfileSummary)
-        return enhanceDailyReviewText(chat(listOf("user" to prompt)))
+            .replace("{{photo_hint}}", if (urls.isNotEmpty()) photoHint(photosNote) else "")
+        return enhanceDailyReviewText(chat(listOf("user" to prompt), imageUrls = urls))
     }
+
+    /** 有照片时的点评指令：只许写真看得见的，防止 AI 借图编故事 */
+    private fun photoHint(photosNote: String): String =
+        "\n用户今天的留念照片：$photosNote" +
+            "请真的看一眼附图，在正文里用真心、有活力的语气夸夸照片里的风景或事物" +
+            "（比如「哇，这座桥真漂亮」「这杯咖啡看着就暖」）。" +
+            "只写照片里看得见的东西；画面不清楚就轻轻带过，绝不编照片里没有的细节。"
 
     // ========== 每周报告 ==========
     suspend fun generateWeeklyReview(
@@ -562,14 +607,18 @@ class AiRepository {
         todayRecords: String,
         taskSummary: String,
         userInput: String,
-        relatedMemories: String
+        relatedMemories: String,
+        photoUrls: List<String> = emptyList(),
+        photosNote: String = ""
     ): DiaryResult {
+        val urls = if (visionEnabled) photoUrls else emptyList()
         val prompt = DIARY_PROMPT
             .replace("{{today_records}}", todayRecords)
             .replace("{{task_summary}}", taskSummary)
             .replace("{{user_input}}", userInput)
             .replace("{{related_memories}}", relatedMemories)
-        val result = chat(listOf("user" to prompt), maxTokens = 4000)
+            .replace("{{photo_hint}}", if (urls.isNotEmpty()) photoHint(photosNote) else "")
+        val result = chat(listOf("user" to prompt), maxTokens = 4000, imageUrls = urls)
         val parsed = parseJsonResponse(result)
         return DiaryResult(
             content = parsed.get("content")?.asString ?: "",

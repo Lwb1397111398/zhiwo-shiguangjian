@@ -36,6 +36,7 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
     private val snapshotReader = com.zhiwo.shiguangjian.data.tasks.TaskSnapshotReader(app.database)
     private val settingsRepo = SettingsRepository(app.database.settingDao())
     private val secureSettingsRepo = SecureSettingsRepository(app)
+    private val photoRepo = app.momentPhotoRepo
     private val aiRepo get() = app.aiRepo
 
     private val _reviews = MutableStateFlow<List<ReviewEntity>>(emptyList())
@@ -94,12 +95,18 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
                 val profile = settingsRepo.getUserProfile()
                 val profileSummary = UserProfileCodec.toPromptSummary(profile)
 
+                // 今日留念照：必须在 refreshAiConfig 之后取（visionEnabled 由它回填）
+                val photoUrls = photoRepo.aiPhotoUrls(today)
+                val photosNote = photoRepo.aiPhotosNote(today)
+
                 val reviewContent = aiRepo.generateDailyReview(
                     taskSummary = taskSummary.ifBlank { "今日暂无任务" },
                     todayRecords = todayRecordsText.ifBlank { "今日暂无记录" },
                     userInput = userInput,
                     relatedMemories = relatedMemories.ifBlank { "暂无记忆" },
-                    userProfileSummary = profileSummary
+                    userProfileSummary = profileSummary,
+                    photoUrls = photoUrls,
+                    photosNote = photosNote
                 )
 
                 reviewRepo.insertReview(
@@ -124,7 +131,9 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
                             todayRecords = todayRecordsText.ifBlank { "今日暂无记录" },
                             taskSummary = taskSummary.ifBlank { "今日暂无任务" },
                             userInput = userInput,
-                            relatedMemories = relatedMemories.ifBlank { "暂无记忆" }
+                            relatedMemories = relatedMemories.ifBlank { "暂无记忆" },
+                            photoUrls = photoUrls,
+                            photosNote = photosNote
                         )
                         if (diaryResult.content.isNotBlank()) {
                             diaryRepo.insertDiary(
@@ -265,12 +274,17 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
                 val profile = settingsRepo.getUserProfile()
                 val profileSummary = UserProfileCodec.toPromptSummary(profile)
 
+                val photoUrls = photoRepo.aiPhotoUrls(date)
+                val photosNote = photoRepo.aiPhotosNote(date)
+
                 val newContent = aiRepo.generateDailyReview(
                     taskSummary = taskSummary.ifBlank { "当日暂无任务" },
                     todayRecords = todayRecordsText.ifBlank { "当日暂无记录" },
                     userInput = review.message,  // 复用用户当天的感受输入
                     relatedMemories = relatedMemories.ifBlank { "暂无记忆" },
-                    userProfileSummary = profileSummary
+                    userProfileSummary = profileSummary,
+                    photoUrls = photoUrls,
+                    photosNote = photosNote
                 )
 
                 reviewRepo.updateReview(

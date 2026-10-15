@@ -52,6 +52,7 @@ fun SettingsScreen(
     val apiBaseUrl by viewModel.apiBaseUrl.collectAsState()
     val apiKey by viewModel.apiKey.collectAsState()
     val modelName by viewModel.modelName.collectAsState()
+    val supportsVision by viewModel.supportsVision.collectAsState()
     val darkModePref by viewModel.darkModePref.collectAsState()
     val autoCalendarSync by viewModel.autoCalendarSync.collectAsState()
     val smartReminder by viewModel.smartReminder.collectAsState()
@@ -199,6 +200,28 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(testResult, fontSize = 13.sp,
                         color = if (testResult.startsWith("✅")) Success else MaterialTheme.colorScheme.error)
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("模型支持识图", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "拍照留念后写日记/每日评价时，AI 会真的看图点评（如\"这座桥真漂亮\"）。" +
+                                "模型不支持识图时请保持关闭，否则带图请求会被拒。",
+                            fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = supportsVision,
+                        onCheckedChange = { viewModel.toggleSupportsVision(it) }
+                    )
                 }
             }
         }

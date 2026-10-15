@@ -41,6 +41,11 @@ class ZhiwoApplication : Application() {
         )
     }
 
+    /** 留念照片统一入口：DB 行与磁盘文件同进退 */
+    val momentPhotoRepo by lazy {
+        com.zhiwo.shiguangjian.data.photo.MomentPhotoRepository(this, database.momentPhotoDao())
+    }
+
     /** 日记重生成共享服务：日记页与记忆页（历史纠错扫描）共用 */
     val diaryRegenerator by lazy {
         com.zhiwo.shiguangjian.data.diary.DiaryRegenerator(
@@ -54,7 +59,8 @@ class ZhiwoApplication : Application() {
             settingsRepo = com.zhiwo.shiguangjian.data.repository.SettingsRepository(database.settingDao()),
             secureSettingsRepo = com.zhiwo.shiguangjian.data.repository.SecureSettingsRepository(this),
             aiRepo = aiRepo,
-            snapshotReader = com.zhiwo.shiguangjian.data.tasks.TaskSnapshotReader(database)
+            snapshotReader = com.zhiwo.shiguangjian.data.tasks.TaskSnapshotReader(database),
+            photoRepo = momentPhotoRepo
         )
     }
 

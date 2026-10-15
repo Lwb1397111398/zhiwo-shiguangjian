@@ -24,7 +24,8 @@ class DiaryRegenerator(
     private val settingsRepo: SettingsRepository,
     private val secureSettingsRepo: SecureSettingsRepository,
     private val aiRepo: AiRepository,
-    private val snapshotReader: com.zhiwo.shiguangjian.data.tasks.TaskSnapshotReader
+    private val snapshotReader: com.zhiwo.shiguangjian.data.tasks.TaskSnapshotReader,
+    private val photoRepo: com.zhiwo.shiguangjian.data.photo.MomentPhotoRepository? = null
 ) {
 
     sealed class Outcome {
@@ -50,11 +51,17 @@ class DiaryRegenerator(
                 .filter { it.status == "active" }
                 .take(5).joinToString("\n") { "· ${it.content}" }
 
+            // 当天留念照：视觉模型开着才会真的附图（AiRepository 内部把关）
+            val photoUrls = photoRepo?.aiPhotoUrls(day).orEmpty()
+            val photosNote = photoRepo?.aiPhotosNote(day).orEmpty()
+
             val result = aiRepo.generateDiary(
                 todayRecords = todayRecordsText.ifBlank { "当日暂无记录" },
                 taskSummary = taskSummary.ifBlank { "当日暂无任务" },
                 userInput = "（历史日记重新生成，无当日用户输入）",
-                relatedMemories = relatedMemories.ifBlank { "暂无记忆" }
+                relatedMemories = relatedMemories.ifBlank { "暂无记忆" },
+                photoUrls = photoUrls,
+                photosNote = photosNote
             )
             if (result.content.isBlank()) return Outcome.Failed("生成结果为空")
 

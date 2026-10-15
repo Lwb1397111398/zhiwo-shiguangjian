@@ -63,6 +63,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _modelName = MutableStateFlow("")
     val modelName: StateFlow<String> = _modelName
 
+    /** 用户声明当前模型支持识图：开了才会把留念照附给 AI（不支持的接口会拒收 image_url） */
+    private val _supportsVision = MutableStateFlow(false)
+    val supportsVision: StateFlow<Boolean> = _supportsVision
+
     private val _darkModePref = MutableStateFlow("auto")
     val darkModePref: StateFlow<String> = _darkModePref
 
@@ -99,6 +103,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 }
                 _autoCalendarSync.value = settingsRepo.getSetting("autoCalendarSync") != "false"
                 _smartReminder.value = settingsRepo.getSetting("smartReminder") != "false"
+                _supportsVision.value = settingsRepo.getSetting("supportsVision") == "1"
                 aiRepo.configureFromSettings(settingsRepo, secureSettingsRepo)
                 _apiKey.value = secureSettingsRepo.getApiKey()
             } catch (e: Throwable) {
@@ -173,6 +178,22 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun updateApiBaseUrl(value: String) { _apiBaseUrl.value = value }
     fun updateApiKey(value: String) { _apiKey.value = value }
     fun updateModelName(value: String) { _modelName.value = value }
+
+    /** 识图开关：立即写库并同步到 AiRepository（下一次生成就会带/不带图） */
+    fun toggleSupportsVision(enabled: Boolean) {
+        val oldValue = _supportsVision.value
+        _supportsVision.value = enabled
+        aiRepo.visionEnabled = enabled
+        viewModelScope.launch {
+            try {
+                settingsRepo.setSetting("supportsVision", if (enabled) "1" else "0")
+            } catch (e: Throwable) {
+                android.util.Log.e("SettingsVM", "toggleSupportsVision failed", e)
+                _supportsVision.value = oldValue
+                aiRepo.visionEnabled = oldValue
+            }
+        }
+    }
 
     fun saveApiConfig(onSuccess: () -> Unit = {}, onError: (String) -> Unit = {}) {
         // 保存前校验：URL 缺协议前缀时 AiRepository.configure 会静默失败，这里立即报错

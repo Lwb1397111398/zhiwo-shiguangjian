@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -82,6 +83,27 @@ fun ScheduleScreen(
     /** 删除确认里如实提示：任务若由记录派生，删任务后记录会回杂项（生命周期设计 B1） */
     var deleteSourceRecord by remember { mutableStateOf<com.zhiwo.shiguangjian.data.db.entity.RecordEntity?>(null) }
     var miscDeleteTarget by remember { mutableStateOf<com.zhiwo.shiguangjian.data.db.entity.RecordEntity?>(null) }
+    /** 留念照：点了📸后先问拍照还是相册 */
+    var photoChoice by remember { mutableStateOf<com.zhiwo.shiguangjian.ui.components.MomentPhotoRequest?>(null) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val photoHost = com.zhiwo.shiguangjian.ui.components.rememberMomentPhotoHost(
+        onCameraPhoto = { date, label, file ->
+            viewModel.addMomentPhoto(date, label, file) { ok ->
+                android.widget.Toast.makeText(
+                    context, if (ok) "已收进 $date 的留念 📷" else "照片没存上，再试一次？",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
+        },
+        onGalleryPhoto = { date, label, uri ->
+            viewModel.importMomentPhoto(date, label, uri) { ok ->
+                android.widget.Toast.makeText(
+                    context, if (ok) "已收进 $date 的留念 🖼" else "这张图没读出来，换一张试试？",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    )
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -179,7 +201,13 @@ fun ScheduleScreen(
                                     },
                                     onLongPress = { if (entry.occurrence?.status != "done") { notDoneTarget = entry; notDoneDate = entry.date.ifBlank { state.today } } },
                                     onEdit = { editing = entry.task },
-                                    onFill = { if (entry.task.kind == "blank") { fillTarget = entry; fillDate = entry.date.ifBlank { state.today } } else { notDoneTarget = entry; notDoneDate = entry.date.ifBlank { state.today } } }
+                                    onFill = { if (entry.task.kind == "blank") { fillTarget = entry; fillDate = entry.date.ifBlank { state.today } } else { notDoneTarget = entry; notDoneDate = entry.date.ifBlank { state.today } } },
+                                    onPhoto = {
+                                        photoChoice = com.zhiwo.shiguangjian.ui.components.MomentPhotoRequest(
+                                            date = entry.date.ifBlank { state.today },
+                                            label = entry.task.content.ifBlank { "完成" }
+                                        )
+                                    }
                                 )
                             }
                         }
@@ -250,6 +278,15 @@ fun ScheduleScreen(
                 onMove = viewModel::moveSection
             )
         }
+    }
+
+    photoChoice?.let { req ->
+        com.zhiwo.shiguangjian.ui.components.MomentPhotoChoiceDialog(
+            request = req,
+            onCamera = { photoHost.openCamera(req.date, req.label); photoChoice = null },
+            onGallery = { photoHost.openGallery(req.date, req.label); photoChoice = null },
+            onDismiss = { photoChoice = null }
+        )
     }
 
     if (creating || editing != null) {
@@ -558,7 +595,9 @@ private fun TaskRow(
     onToggle: () -> Unit,
     onLongPress: () -> Unit,
     onEdit: () -> Unit,
-    onFill: () -> Unit
+    onFill: () -> Unit,
+    /** 完成后自愿留念：拍张照/挑一张进当天日记；不点不出现任何打断 */
+    onPhoto: () -> Unit = {}
 ) {
     val task = entry.task
     val isDone = entry.occurrence?.status == "done" || entry.state == com.zhiwo.shiguangjian.data.tasks.EntryState.DONE
@@ -603,6 +642,16 @@ private fun TaskRow(
             }
             if (task.kind == "blank" && !isDone) {
                 TextButton(onClick = onFill) { Text("回填") }
+            }
+            if (isDone) {
+                IconButton(onClick = onPhoto, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        Icons.Default.PhotoCamera,
+                        contentDescription = "拍张照留念（进今天日记）",
+                        tint = Success,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }

@@ -71,12 +71,14 @@ private data class ScheduleSources(
  */
 class ScheduleViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val db = (application as ZhiwoApplication).database
+    private val app = application as ZhiwoApplication
+    private val db = app.database
     private val bridge = TaskWriteBridge(db)
     private val occurrencesRepo = TaskOccurrenceRepository(db)
     private val recordRepo = RecordRepository(
         db, db.recordDao(), db.taskDao(), db.tagDao(), db.keyInfoDao()
     )
+    private val photoRepo = app.momentPhotoRepo
 
     val today: String = DateFormats.nowDate()
 
@@ -213,6 +215,18 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     fun uncheck(entry: DayEntry, date: String = today) = viewModelScope.launch {
         bridge.uncheck(entry.task, date)
     }
+
+    /** 打卡完成后自愿留念：把相机写好的文件入库（入库前先压缩） */
+    fun addMomentPhoto(date: String, label: String, file: java.io.File, onResult: (Boolean) -> Unit) =
+        viewModelScope.launch {
+            onResult(runCatching { photoRepo.adoptCameraFile(file, date, label) }.getOrNull() != null)
+        }
+
+    /** 打卡完成后自愿留念：从相册挑一张，复制进私有目录入库 */
+    fun importMomentPhoto(date: String, label: String, uri: android.net.Uri, onResult: (Boolean) -> Unit) =
+        viewModelScope.launch {
+            onResult(runCatching { photoRepo.importFromUri(uri, date, label) }.getOrNull() != null)
+        }
 
     fun markNotDone(entry: DayEntry, reasonCode: String, reasonNote: String, date: String = today) =
         viewModelScope.launch {
